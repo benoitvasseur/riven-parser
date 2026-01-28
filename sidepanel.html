@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,16 +9,32 @@
 <body>
   <div class="container">
     <header>
-      <h1>🎮 Riven Market</h1>
-      <p class="subtitle">Bienvenue sur le marché Riven</p>
+      <div class="header-content">
+        <div class="header-left">
+          <h1>🎮 Riven Market</h1>
+          <p class="subtitle">Welcome to the Riven Market</p>
+        </div>
+        <div class="header-right" id="userInfoHeader" style="display: none;">
+          <div class="user-avatar-small">
+            <span id="userInitialsHeader">?</span>
+          </div>
+          <div class="user-details-small">
+            <span id="userNameHeader">User</span>
+            <span id="userPlatformHeader" class="user-platform"></span>
+          </div>
+          <button id="logoutBtnHeader" class="btn btn-secondary btn-xs" title="Sign out">
+            ↪️
+          </button>
+        </div>
+      </div>
     </header>
     
     <main>
-      <!-- Page de connexion -->
+      <!-- Login page -->
       <div id="loginPage" class="content">
         <div class="login-card">
-          <h2>Connexion</h2>
-          <p class="login-subtitle">Connectez-vous à votre compte Warframe Market</p>
+          <h2>Sign In</h2>
+          <p class="login-subtitle">Connect to your Warframe Market account</p>
           
           <div id="errorMessage" class="error-message" style="display: none;"></div>
           
@@ -30,14 +46,14 @@
                 id="email" 
                 name="email" 
                 class="form-input" 
-                placeholder="votre@email.com"
+                placeholder="your@email.com"
                 required
                 autocomplete="email"
               >
             </div>
             
             <div class="form-group">
-              <label for="password">Mot de passe</label>
+              <label for="password">Password</label>
               <input 
                 type="password" 
                 id="password" 
@@ -51,41 +67,56 @@
             
             <button type="submit" class="btn btn-primary btn-block btn-large" id="loginBtn">
               <span class="btn-icon">🎮</span>
-              Se connecter
+              Sign In
             </button>
           </form>
           
           <div class="login-footer">
-            <p>Vous n'avez pas de compte ?</p>
+            <p>Don't have an account?</p>
             <a href="https://warframe.market/auth/register" target="_blank" class="link">
-              Créer un compte sur Warframe Market
+              Create an account on Warframe Market
             </a>
           </div>
         </div>
       </div>
       
-      <!-- Page principale (après connexion) -->
+      <!-- Main page (after login) -->
       <div id="mainPage" class="content" style="display: none;">
-        <div class="user-info">
-          <div class="user-avatar">
-            <span id="userInitials">?</span>
-          </div>
-          <div class="user-details">
-            <h3 id="userName">Utilisateur</h3>
-            <p id="userEmail" class="user-email"></p>
-          </div>
-          <button id="logoutBtn" class="btn btn-secondary btn-sm">
-            Déconnexion
-          </button>
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab-button active" data-tab="nouveau">New</button>
+          <button class="tab-button" data-tab="rivens">Rivens</button>
         </div>
         
-        <div class="info-card">
-          <h2>Tableau de bord</h2>
-          <p>Vous êtes connecté à Warframe Market !</p>
-        </div>
-        
-        <div class="actions">
-          <button id="refreshBtn" class="btn btn-primary">Actualiser</button>
+        <!-- Tab content -->
+        <div class="tab-content">
+          <div id="nouveauTab" class="tab-pane active">
+            <div class="upload-section">
+              <h3>Add a New Riven</h3>
+              <p class="upload-subtitle">Upload a screenshot of your Riven</p>
+              
+              <div id="dropZone" class="drop-zone">
+                <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg" style="display: none;">
+                <div class="drop-zone-content">
+                  <div class="drop-zone-icon">📷</div>
+                  <p class="drop-zone-text">Drag and drop an image here</p>
+                  <p class="drop-zone-subtext">or</p>
+                  <button type="button" class="btn btn-primary btn-sm" id="uploadBtn">
+                    Choose a file
+                  </button>
+                  <p class="drop-zone-hint">PNG or JPG only</p>
+                </div>
+                <div id="imagePreview" class="image-preview" style="display: none;">
+                  <img id="previewImg" src="" alt="Preview">
+                  <button type="button" class="btn-remove" id="removeBtn" title="Remove">×</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="rivensTab" class="tab-pane">
+            <!-- Rivens tab content (empty for now) -->
+          </div>
         </div>
       </div>
     </main>
@@ -96,6 +127,14 @@
   </div>
   
   <script src="scripts/api.js"></script>
+  <script type="module">
+    import { initNouveauTab } from './scripts/nouveau-tab.js';
+    import { initRivensTab } from './scripts/rivens-tab.js';
+    
+    // Rendre les fonctions disponibles globalement
+    window.initNouveauTab = initNouveauTab;
+    window.initRivensTab = initRivensTab;
+  </script>
   <script src="scripts/sidepanel.js"></script>
 </body>
 </html>

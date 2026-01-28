@@ -1,29 +1,25 @@
-// Script pour le sidepanel Riven Market
+// Script for Riven Market sidepanel
 
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Riven Market sidepanel chargé');
+  console.log('Riven Market sidepanel loaded');
   
-  // Vérifier l'état de connexion au chargement
+  // Check authentication status on load
   await checkAuthStatus();
   
-  // Gestionnaire du formulaire de connexion
+  // Login form handler
   const loginForm = document.getElementById('loginForm');
   loginForm.addEventListener('submit', handleLogin);
   
-  // Gestionnaire du bouton de déconnexion
-  const logoutBtn = document.getElementById('logoutBtn');
-  logoutBtn.addEventListener('click', handleLogout);
+  // Logout button handler (in header)
+  const logoutBtnHeader = document.getElementById('logoutBtnHeader');
+  logoutBtnHeader.addEventListener('click', handleLogout);
   
-  // Gestionnaire du bouton d'actualisation
-  const refreshBtn = document.getElementById('refreshBtn');
-  refreshBtn.addEventListener('click', async () => {
-    console.log('Actualisation demandée');
-    alert('Données actualisées !');
-  });
+  // Tab handlers
+  initTabs();
 });
 
 /**
- * Vérifie l'état d'authentification et affiche la page appropriée
+ * Checks authentication status and displays appropriate page
  */
 async function checkAuthStatus() {
   const isAuth = await window.WarframeAPI.isAuthenticated();
@@ -36,48 +32,62 @@ async function checkAuthStatus() {
 }
 
 /**
- * Affiche la page de connexion
+ * Displays the login page
  */
 function showLoginPage() {
   document.getElementById('loginPage').style.display = 'block';
   document.getElementById('mainPage').style.display = 'none';
+  
+  // Hide user info in header
+  document.getElementById('userInfoHeader').style.display = 'none';
 }
 
 /**
- * Affiche la page principale
+ * Displays the main page
  */
 async function showMainPage() {
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('mainPage').style.display = 'block';
   
-  // Charger les informations utilisateur
+  // Load user information
   await loadUserInfo();
+  
+  // Show user info in header
+  document.getElementById('userInfoHeader').style.display = 'flex';
+  
+  // Initialize tabs
+  if (window.initNouveauTab) {
+    window.initNouveauTab();
+  }
+  if (window.initRivensTab) {
+    window.initRivensTab();
+  }
 }
 
 /**
- * Charge les informations de l'utilisateur connecté
+ * Loads connected user information
  */
 async function loadUserInfo() {
   const user = await window.WarframeAPI.getUserInfo();
   
   if (user) {
-    // Afficher les informations utilisateur
-    const userName = user.ingame_name || 'Utilisateur';
+    // Display user information in header
+    const userName = user.ingame_name || 'User';
     const platform = user.platform || 'N/A';
     
-    document.getElementById('userName').textContent = userName;
-    document.getElementById('userEmail').textContent = `Plateforme: ${platform.toUpperCase()}`;
+    document.getElementById('userNameHeader').textContent = userName;
+    document.getElementById('userPlatformHeader').textContent = platform.toUpperCase();
     
-    // Afficher les initiales dans l'avatar
+    // Display initials in avatar
     const initials = userName.substring(0, 2).toUpperCase();
-    document.getElementById('userInitials').textContent = initials;
+    document.getElementById('userInitialsHeader').textContent = initials;
     
-    console.log('Informations utilisateur chargées:', user);
+    console.log('User information loaded:', user);
   }
 }
 
 /**
- * Gère la soumission du formulaire de connexion
+ * Handles login form submission
  */
 async function handleLogin(event) {
   event.preventDefault();
@@ -87,68 +97,68 @@ async function handleLogin(event) {
   const emailInput = document.getElementById('email');
   const passwordInput = document.getElementById('password');
   
-  // Masquer les erreurs précédentes
+  // Hide previous errors
   errorMessage.style.display = 'none';
   
-  // Récupérer les valeurs du formulaire
+  // Get form values
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   
-  // Validation basique
+  // Basic validation
   if (!email || !password) {
-    showError('Veuillez remplir tous les champs');
+    showError('Please fill in all fields');
     return;
   }
   
-  // Désactiver le bouton pendant la connexion
+  // Disable button during login
   loginBtn.disabled = true;
   
-  // Sauvegarder le texte original
+  // Save original text
   const originalHTML = loginBtn.innerHTML;
-  loginBtn.innerHTML = '<span class="btn-icon">⏳</span> Connexion en cours...';
+  loginBtn.innerHTML = '<span class="btn-icon">⏳</span> Signing in...';
   
   try {
-    console.log('Connexion avec email/password...');
+    console.log('Signing in with email/password...');
     
-    // Appeler l'API de connexion
+    // Call login API
     const result = await window.WarframeAPI.signIn(email, password);
     
     if (result.success) {
-      console.log('Connexion réussie !', result.data);
+      console.log('Sign in successful!', result.data);
       
-      // Réinitialiser le formulaire
+      // Reset form
       emailInput.value = '';
       passwordInput.value = '';
       
-      // Afficher la page principale
+      // Show main page
       await showMainPage();
     } else {
-      console.error('Échec de la connexion:', result.error);
-      showError(result.error || 'Identifiants incorrects. Veuillez réessayer.');
+      console.error('Sign in failed:', result.error);
+      showError(result.error || 'Incorrect credentials. Please try again.');
     }
   } catch (error) {
-    console.error('Erreur de connexion:', error);
-    showError('Une erreur est survenue. Veuillez réessayer.');
+    console.error('Sign in error:', error);
+    showError('An error occurred. Please try again.');
   } finally {
-    // Réactiver le bouton
+    // Re-enable button
     loginBtn.disabled = false;
     loginBtn.innerHTML = originalHTML;
   }
 }
 
 /**
- * Gère la déconnexion
+ * Handles logout
  */
 async function handleLogout() {
-  if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+  if (confirm('Are you sure you want to sign out?')) {
     await window.WarframeAPI.signOut();
-    console.log('Déconnexion effectuée');
+    console.log('Sign out completed');
     showLoginPage();
   }
 }
 
 /**
- * Affiche un message d'erreur
+ * Displays an error message
  */
 function showError(message) {
   const errorMessage = document.getElementById('errorMessage');
@@ -156,3 +166,39 @@ function showError(message) {
   errorMessage.style.display = 'block';
 }
 
+/**
+ * Initializes the tabs system
+ */
+function initTabs() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tabName = button.getAttribute('data-tab');
+      switchTab(tabName);
+    });
+  });
+}
+
+/**
+ * Switches the active tab
+ */
+function switchTab(tabName) {
+  // Remove active class from all buttons and content
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-pane').forEach(pane => {
+    pane.classList.remove('active');
+  });
+  
+  // Add active class to selected button and content
+  const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+  const activePane = document.getElementById(`${tabName}Tab`);
+  
+  if (activeButton && activePane) {
+    activeButton.classList.add('active');
+    activePane.classList.add('active');
+    console.log(`Tab "${tabName}" activated`);
+  }
+}

@@ -15,6 +15,10 @@
     "sidePanel",
     "storage"
   ],
+  "host_permissions": [
+    "https://api.warframe.market/*",
+    "https://warframe.market/*"
+  ],
   "action": {
     "default_title": "Ouvrir Riven Market"
   },

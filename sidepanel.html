@@ -14,10 +14,74 @@
     </header>
     
     <main>
-      <div class="content">
+      <!-- Page de connexion -->
+      <div id="loginPage" class="content">
+        <div class="login-card">
+          <h2>Connexion</h2>
+          <p class="login-subtitle">Connectez-vous à votre compte Warframe Market</p>
+          
+          <div id="errorMessage" class="error-message" style="display: none;"></div>
+          
+          <form id="loginForm">
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                class="form-input" 
+                placeholder="votre@email.com"
+                required
+                autocomplete="email"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label for="password">Mot de passe</label>
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                class="form-input" 
+                placeholder="••••••••"
+                required
+                autocomplete="current-password"
+              >
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block btn-large" id="loginBtn">
+              <span class="btn-icon">🎮</span>
+              Se connecter
+            </button>
+          </form>
+          
+          <div class="login-footer">
+            <p>Vous n'avez pas de compte ?</p>
+            <a href="https://warframe.market/auth/register" target="_blank" class="link">
+              Créer un compte sur Warframe Market
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Page principale (après connexion) -->
+      <div id="mainPage" class="content" style="display: none;">
+        <div class="user-info">
+          <div class="user-avatar">
+            <span id="userInitials">?</span>
+          </div>
+          <div class="user-details">
+            <h3 id="userName">Utilisateur</h3>
+            <p id="userEmail" class="user-email"></p>
+          </div>
+          <button id="logoutBtn" class="btn btn-secondary btn-sm">
+            Déconnexion
+          </button>
+        </div>
+        
         <div class="info-card">
-          <h2>À propos</h2>
-          <p>Votre sidepanel Riven Market est prêt !</p>
+          <h2>Tableau de bord</h2>
+          <p>Vous êtes connecté à Warframe Market !</p>
         </div>
         
         <div class="actions">
@@ -31,6 +95,7 @@
     </footer>
   </div>
   
+  <script src="scripts/api.js"></script>
   <script src="scripts/sidepanel.js"></script>
 </body>
 </html>

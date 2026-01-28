@@ -62,11 +62,11 @@ async function loadUserInfo() {
   
   if (user) {
     // Afficher les informations utilisateur
-    const userName = user.ingame_name || user.name || 'Utilisateur';
-    const userId = user.id || '';
+    const userName = user.ingame_name || 'Utilisateur';
+    const platform = user.platform || 'N/A';
     
     document.getElementById('userName').textContent = userName;
-    document.getElementById('userEmail').textContent = `ID: ${userId}`;
+    document.getElementById('userEmail').textContent = `Plateforme: ${platform.toUpperCase()}`;
     
     // Afficher les initiales dans l'avatar
     const initials = userName.substring(0, 2).toUpperCase();

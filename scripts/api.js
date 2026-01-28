@@ -1,0 +1,236 @@
+// Module API pour Warframe Market (API v1 - Simple Login)
+
+const API_BASE_URL = 'https://api.warframe.market/v1';
+
+
+/**
+ * Génère ou récupère un deviceId unique
+ */
+async function getDeviceId() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['deviceId'], (result) => {
+      if (result.deviceId) {
+        resolve(result.deviceId);
+      } else {
+        // Générer un nouveau deviceId unique
+        const newDeviceId = `chrome-ext-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+        chrome.storage.local.set({ deviceId: newDeviceId }, () => {
+          resolve(newDeviceId);
+        });
+      }
+    });
+  });
+}
+
+/**
+ * Connexion simple avec email et mot de passe (API v1)
+ * @param {string} email - Email de l'utilisateur
+ * @param {string} password - Mot de passe de l'utilisateur
+ * @returns {Promise<Object>} Résultat de la connexion
+ */
+async function signIn(email, password) {
+  try {
+    console.log('Connexion avec email/password...');
+    
+    const deviceId = await getDeviceId();
+    
+    // Utiliser credentials: 'omit' pour éviter d'envoyer les cookies et le check CSRF
+    // auth_type: 'header' signifie qu'on veut un token JWT, pas de session cookie
+    const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Platform': 'chrome_extension',
+        'Authorization': 'JWT'
+      },
+      body: JSON.stringify({
+        auth_type: 'header',
+        email: email,
+        password: password,
+        device_id: deviceId
+      })
+    });
+    
+    console.log('Réponse signin:', {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type')
+    });
+    
+    const responseText = await response.text();
+    console.log('Corps de la réponse (premiers 200 caractères):', responseText.substring(0, 200));
+    
+    if (!response.ok) {
+      console.error('Erreur lors de la connexion:', response.status, responseText);
+      let errorMessage = 'Erreur lors de la connexion';
+      
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } catch (e) {
+        // Ignorer les erreurs de parsing
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    // Parser la réponse
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Erreur de parsing JSON:', parseError);
+      console.error('Texte complet de la réponse:', responseText);
+      throw new Error(`Réponse invalide du serveur: ${parseError.message}`);
+    }
+    
+    // Récupérer le token du header Authorization
+    const authToken = response.headers.get('Authorization');
+    console.log('Token reçu dans header:', authToken ? 'Oui' : 'Non');
+    
+    if (!authToken) {
+      throw new Error('Token d\'authentification non reçu');
+    }
+    
+    // Les données utilisateur sont dans data.payload
+    const user = data.payload.user;
+    
+    // Sauvegarder le token et les informations utilisateur
+    await saveAuthData(authToken, user);
+    
+    console.log('Connexion réussie !', user);
+    
+    return {
+      success: true,
+      data: {
+        token: authToken,
+        user: user
+      }
+    };
+    
+  } catch (error) {
+    console.error('Erreur de connexion:', error);
+    
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+
+
+/**
+ * Sauvegarde les données d'authentification
+ */
+async function saveAuthData(authToken, user) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({
+      authToken: authToken,
+      user: user,
+      isAuthenticated: true,
+      authDate: new Date().toISOString()
+    }, () => {
+      console.log('Données d\'authentification sauvegardées');
+      resolve();
+    });
+  });
+}
+
+
+/**
+ * Vérifie si l'utilisateur est connecté
+ */
+async function isAuthenticated() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['isAuthenticated', 'authToken'], (result) => {
+      resolve(result.isAuthenticated && !!result.authToken);
+    });
+  });
+}
+
+/**
+ * Récupère le token d'authentification
+ */
+async function getAuthToken() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['authToken'], (result) => {
+      resolve(result.authToken || null);
+    });
+  });
+}
+
+/**
+ * Déconnecte l'utilisateur
+ */
+async function signOut() {
+  return new Promise((resolve) => {
+    chrome.storage.local.remove([
+      'authToken',
+      'user',
+      'isAuthenticated',
+      'authDate'
+    ], () => {
+      console.log('Déconnexion effectuée');
+      resolve();
+    });
+  });
+}
+
+/**
+ * Effectue une requête API authentifiée
+ * @param {string} endpoint - Endpoint de l'API
+ * @param {Object} options - Options de la requête fetch
+ */
+async function authenticatedRequest(endpoint, options = {}) {
+  const token = await getAuthToken();
+  
+  if (!token) {
+    throw new Error('Non authentifié');
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token,
+    ...options.headers
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      // Token invalide, déconnecter l'utilisateur
+      await signOut();
+      throw new Error('Session expirée, veuillez vous reconnecter');
+    }
+    throw new Error(`Erreur API: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Récupère les informations utilisateur sauvegardées
+ */
+async function getUserInfo() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['user'], (result) => {
+      resolve(result.user || null);
+    });
+  });
+}
+
+// Exporter les fonctions pour utilisation dans d'autres scripts
+window.WarframeAPI = {
+  signIn,
+  signOut,
+  isAuthenticated,
+  getAuthToken,
+  authenticatedRequest,
+  getUserInfo
+};

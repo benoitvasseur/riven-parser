@@ -5,9 +5,18 @@ import { parseRivenData, validateRivenData, formatRivenData } from './riven-pars
 let tesseractWorker = null;
 
 let knownWeapons = [];
+let knownAttributes = [];
+
+const KNOWN_POLARITIES = [
+  'Madurai', 'Vazarin', 'Naramon', 'Zenurik', 'Unairu', 'Penjaga', 'Umbra'
+];
 
 async function loadKnownWeapons() {
   knownWeapons = await WarframeAPI.getRivenItems();
+}
+
+async function loadKnownAttributes() {
+  knownAttributes = await WarframeAPI.getRivenAttributes();
 }
 
 /**
@@ -18,6 +27,7 @@ export function initNouveauTab() {
   initImageUpload();
   initTesseractWorker();
   loadKnownWeapons();
+  loadKnownAttributes();
 }
 
 /**
@@ -192,7 +202,7 @@ async function handleNewRivenImg(file, dataUrl) {
   
   ocrResultsSection.style.display = 'block';
   ocrStatus.style.display = 'flex';
-  ocrResults.style.display = 'none';
+  if (ocrResults) ocrResults.style.display = 'none';
   
   // Update status
   updateOCRStatus('⏳', 'Initializing OCR...');
@@ -210,8 +220,9 @@ async function handleNewRivenImg(file, dataUrl) {
     
     console.log('OCR result:', result);
     
-    // Display results
-    displayOCRResults(result);
+    // Automatically analyze result instead of displaying raw text
+    updateOCRStatus('🧠', 'Parsing Riven data...');
+    analyzeRivenData(result);
     
   } catch (error) {
     console.error('OCR error:', error);
@@ -242,42 +253,7 @@ function updateOCRProgress(progress) {
 }
 
 /**
- * Displays OCR results
- * @param {Object} result - Tesseract recognition result
- */
-function displayOCRResults(result) {
-  const ocrStatus = document.getElementById('ocrStatus');
-  const ocrResults = document.getElementById('ocrResults');
-  const ocrConfidence = document.getElementById('ocrConfidence');
-  const ocrText = document.getElementById('ocrText');
-  
-  // Hide status, show results
-  ocrStatus.style.display = 'none';
-  ocrResults.style.display = 'block';
-  
-  // Display confidence
-  const confidence = Math.round(result.data.confidence);
-  ocrConfidence.textContent = `${confidence}%`;
-  
-  // Apply color based on confidence
-  if (confidence >= 80) {
-    ocrConfidence.style.color = '#28a745';
-  } else if (confidence >= 60) {
-    ocrConfidence.style.color = '#ffc107';
-  } else {
-    ocrConfidence.style.color = '#dc3545';
-  }
-  
-  // Display text
-  ocrText.value = result.data.text;
-  
-  // Initialize analyze button
-  const analyzeBtn = document.getElementById('analyzeBtn');
-  analyzeBtn.onclick = () => analyzeRivenData(result);
-}
-
-/**
- * Analyzes Riven data from OCR result
+ * Analyzes Riven data from OCR result and renders the form
  * @param {Object} result - Tesseract recognition result
  */
 function analyzeRivenData(result) {
@@ -288,25 +264,197 @@ function analyzeRivenData(result) {
   const rivenData = parseRivenData(result.data.text, knownWeapons);
   console.log('Parsed Riven data:', rivenData);
   
-  // Validate the data
+  // Validate the data (optional, just for logging)
   const validation = validateRivenData(rivenData);
   console.log('Validation result:', validation);
+
+  // Hide status
+  const ocrStatus = document.getElementById('ocrStatus');
+  ocrStatus.style.display = 'none';
+
+  // Render Form
+  renderRivenForm(rivenData);
+}
+
+/**
+ * Renders the Riven data form
+ * @param {Object} data - Parsed Riven data
+ */
+function renderRivenForm(data) {
+  const ocrResultsSection = document.getElementById('ocrResultsSection');
   
-  // Format and display results
-  const formattedData = formatRivenData(rivenData);
-  
-  let message = '📊 Analyse Riven\n\n';
-  
-  if (validation.isValid) {
-    message += formattedData;
-    message += '\n✅ Données valides!';
+  // Create or get form container
+  let formContainer = document.getElementById('rivenFormContainer');
+  if (!formContainer) {
+    formContainer = document.createElement('div');
+    formContainer.id = 'rivenFormContainer';
+    formContainer.className = 'riven-form-container';
+    ocrResultsSection.appendChild(formContainer);
   } else {
-    message += formattedData;
-    message += '\n\n⚠️ Avertissements:\n';
-    validation.errors.forEach(error => {
-      message += `  • ${error}\n`;
-    });
+    formContainer.innerHTML = ''; // Clear existing
   }
+
+  // Create Form HTML
+  const form = document.createElement('form');
+  form.className = 'riven-form';
+  form.onsubmit = (e) => e.preventDefault();
+
+  // Weapon Field
+  const weaponGroup = createFormGroup('Weapon');
+  const weaponSelect = document.createElement('select');
+  weaponSelect.className = 'form-input';
+  weaponSelect.innerHTML = '<option value="">Select Weapon...</option>';
   
-  alert(message);
+  knownWeapons.forEach(weapon => {
+    const option = document.createElement('option');
+    const weaponName = typeof weapon === 'string' ? weapon : weapon.item_name || weapon.url_name;
+    option.value = weaponName;
+    option.textContent = weaponName;
+    if (data.weaponName && weaponName.toLowerCase() === data.weaponName.toLowerCase()) {
+      option.selected = true;
+    }
+    weaponSelect.appendChild(option);
+  });
+  weaponGroup.appendChild(weaponSelect);
+  form.appendChild(weaponGroup);
+
+  // Attributes Section
+  const attributesLabel = document.createElement('label');
+  attributesLabel.textContent = 'Attributes';
+  attributesLabel.style.display = 'block';
+  attributesLabel.style.marginBottom = '8px';
+  attributesLabel.style.fontWeight = '600';
+  form.appendChild(attributesLabel);
+
+  const attributesContainer = document.createElement('div');
+  attributesContainer.id = 'attributesContainer';
+  form.appendChild(attributesContainer);
+
+  // Add parsed attributes (or empty rows if none)
+  if (data.stats && data.stats.length > 0) {
+    data.stats.forEach(stat => {
+      addAttributeRow(attributesContainer, stat);
+    });
+  } else {
+    // Add 2 empty rows by default if no stats
+    addAttributeRow(attributesContainer);
+    addAttributeRow(attributesContainer);
+  }
+
+  // Add Attribute Button
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn btn-secondary btn-sm';
+  addBtn.textContent = '+ Add Attribute';
+  addBtn.style.marginTop = '8px';
+  addBtn.style.marginBottom = '16px';
+  addBtn.onclick = () => addAttributeRow(attributesContainer);
+  form.appendChild(addBtn);
+
+  // Mastery Rank
+  const mrGroup = createFormGroup('Mastery Rank');
+  const mrInput = document.createElement('input');
+  mrInput.type = 'number';
+  mrInput.className = 'form-input';
+  mrInput.value = data.mastery || '';
+  mrGroup.appendChild(mrInput);
+  form.appendChild(mrGroup);
+
+  // Polarity
+  const polarityGroup = createFormGroup('Polarity');
+  const polaritySelect = document.createElement('select');
+  polaritySelect.className = 'form-input';
+  polaritySelect.innerHTML = '<option value="">Select Polarity...</option>';
+  
+  KNOWN_POLARITIES.forEach(polarity => {
+    const option = document.createElement('option');
+    option.value = polarity;
+    option.textContent = polarity;
+    if (data.polarity && data.polarity.toLowerCase() === polarity.toLowerCase()) {
+      option.selected = true;
+    }
+    polaritySelect.appendChild(option);
+  });
+  polarityGroup.appendChild(polaritySelect);
+  form.appendChild(polarityGroup);
+
+  formContainer.appendChild(form);
+}
+
+function createFormGroup(labelText) {
+  const group = document.createElement('div');
+  group.className = 'form-group';
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  group.appendChild(label);
+  return group;
+}
+
+function addAttributeRow(container, statData = null) {
+  // Enforce max 4 attributes
+  if (container.children.length >= 4) {
+    alert('Maximum 4 attributes allowed');
+    return;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'attribute-row';
+  row.style.display = 'flex';
+  row.style.gap = '8px';
+  row.style.marginBottom = '8px';
+  row.style.alignItems = 'center';
+
+  // Numeric Value
+  const numInput = document.createElement('input');
+  numInput.type = 'number';
+  numInput.className = 'form-input';
+  numInput.style.width = '80px';
+  numInput.placeholder = 'Value';
+  numInput.step = '0.1';
+  if (statData) {
+    const sign = statData.type === 'negative' ? '-' : '';
+    numInput.value = `${sign}${statData.value}`;
+  }
+  row.appendChild(numInput);
+
+  // Attribute Dropdown
+  const attrSelect = document.createElement('select');
+  attrSelect.className = 'form-input';
+  attrSelect.style.flex = '1';
+  attrSelect.innerHTML = '<option value="">Select Attribute...</option>';
+  
+  // Sort attributes by effect name
+  const sortedAttributes = [...knownAttributes].sort((a, b) => 
+    a.effect.localeCompare(b.effect)
+  );
+
+  sortedAttributes.forEach(attr => {
+    const option = document.createElement('option');
+    option.value = attr.url_name;
+    option.textContent = attr.effect;
+    
+    // Fuzzy match
+    if (statData && statData.name && 
+        (attr.effect.toLowerCase().includes(statData.name.toLowerCase()) || 
+         statData.name.toLowerCase().includes(attr.effect.toLowerCase()))) {
+      option.selected = true;
+    }
+    attrSelect.appendChild(option);
+  });
+  row.appendChild(attrSelect);
+
+  // Delete Button
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'btn btn-secondary btn-sm';
+  delBtn.innerHTML = '🗑️';
+  delBtn.title = 'Remove attribute';
+  delBtn.onclick = () => {
+    if (container.children.length > 0) {
+      container.removeChild(row);
+    }
+  };
+  row.appendChild(delBtn);
+
+  container.appendChild(row);
 }

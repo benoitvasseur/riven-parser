@@ -250,6 +250,31 @@ async function getRivenItems() {
   }
 }
 
+/**
+ * Récupère la liste des attributs Riven disponibles
+ * @returns {Promise<Array>} Liste des attributs
+ */
+async function getRivenAttributes() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/riven/attributes`, {
+      method: 'GET',
+      headers: {
+        'Language': 'en' // Par défaut en anglais
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur API: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.payload.attributes;
+  } catch (error) {
+    console.error('Erreur lors de la récupération des attributs Riven:', error);
+    return [];
+  }
+}
+
 // Exporter les fonctions pour utilisation dans d'autres scripts
 window.WarframeAPI = {
   signIn,
@@ -258,5 +283,6 @@ window.WarframeAPI = {
   getAuthToken,
   authenticatedRequest,
   getUserInfo,
-  getRivenItems
+  getRivenItems,
+  getRivenAttributes
 };

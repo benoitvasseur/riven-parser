@@ -275,6 +275,45 @@ async function getRivenAttributes() {
   }
 }
 
+/**
+ * Recherche des enchères de Riven
+ * @param {Object} params - Paramètres de recherche
+ * @returns {Promise<Array>} Liste des enchères
+ */
+async function searchAuctions(params) {
+  try {
+    // Construire les query params
+    const queryParams = new URLSearchParams();
+    
+    // Valeurs par défaut
+    if (!params.platform) params.platform = 'pc';
+    if (!params.buyout_policy) params.buyout_policy = 'direct'; // On préfère souvent les ventes directes par défaut
+    
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auctions/search?type=riven&${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Language': 'en'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur API: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.payload.auctions || [];
+  } catch (error) {
+    console.error('Erreur lors de la recherche d\'enchères:', error);
+    return [];
+  }
+}
+
 // Exporter les fonctions pour utilisation dans d'autres scripts
 window.WarframeAPI = {
   signIn,
@@ -284,5 +323,6 @@ window.WarframeAPI = {
   authenticatedRequest,
   getUserInfo,
   getRivenItems,
-  getRivenAttributes
+  getRivenAttributes,
+  searchAuctions
 };

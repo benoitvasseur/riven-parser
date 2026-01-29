@@ -12,7 +12,8 @@ const KNOWN_POLARITIES = [
 ];
 
 async function loadKnownWeapons() {
-  knownWeapons = await WarframeAPI.getRivenItems();
+  const knownWeaponsUnsorted = await WarframeAPI.getRivenItems();
+  knownWeapons = knownWeaponsUnsorted.sort((a, b) => a.item_name.localeCompare(b.item_name));
 }
 
 async function loadKnownAttributes() {
@@ -378,6 +379,33 @@ function renderRivenForm(data) {
   polarityGroup.appendChild(polaritySelect);
   form.appendChild(polarityGroup);
 
+  // Rolls (Unrolled Checkbox)
+  const rollsGroup = document.createElement('div');
+  rollsGroup.className = 'form-group';
+  rollsGroup.style.display = 'flex';
+  rollsGroup.style.alignItems = 'center';
+  rollsGroup.style.marginTop = '8px';
+
+  const rollsLabel = document.createElement('label');
+  rollsLabel.style.display = 'flex';
+  rollsLabel.style.alignItems = 'center';
+  rollsLabel.style.cursor = 'pointer';
+
+  const rollsInput = document.createElement('input');
+  rollsInput.type = 'checkbox';
+  // Logic: unchecked if 0, checked otherwise
+  rollsInput.checked = (data.rolls || 0) == 0;
+  
+  const rollsText = document.createElement('span');
+  rollsText.textContent = 'unrolled';
+  rollsText.style.marginLeft = '8px';
+  rollsText.style.fontWeight = '600';
+
+  rollsLabel.appendChild(rollsInput);
+  rollsLabel.appendChild(rollsText);
+  rollsGroup.appendChild(rollsLabel);
+  form.appendChild(rollsGroup);
+
   formContainer.appendChild(form);
 }
 
@@ -446,7 +474,7 @@ function addAttributeRow(container, statData = null) {
   // Delete Button
   const delBtn = document.createElement('button');
   delBtn.type = 'button';
-  delBtn.className = 'btn btn-secondary btn-sm';
+  delBtn.className = 'btn btn-delete btn-sm';
   delBtn.innerHTML = '🗑️';
   delBtn.title = 'Remove attribute';
   delBtn.onclick = () => {

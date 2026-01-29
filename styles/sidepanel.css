@@ -296,6 +296,15 @@ main {
   color: white;
 }
 
+.btn-delete {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-delete:hover {
+  background: #c82333;
+}
+
 .btn-secondary:hover {
   background: #5a6268;
 }

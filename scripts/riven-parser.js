@@ -32,6 +32,13 @@ export function parseRivenData(text, knownWeapons = []) {
   
   // Extract rolls count
   rivenData.rolls = extractRolls(text);
+
+  // Fallback: If mastery or rolls are missing, try to find them based on position (below stats)
+  if (rivenData.mastery === null || rivenData.rolls === null) {
+    const footerData = extractFooterData(lines);
+    if (rivenData.mastery === null) rivenData.mastery = footerData.mastery;
+    if (rivenData.rolls === null) rivenData.rolls = footerData.rolls;
+  }
   
   // Extract polarity
   rivenData.polarity = extractPolarity(text);
@@ -270,6 +277,49 @@ function extractRolls(text) {
   }
   
   return null;
+}
+
+/**
+ * Scans lines below the last detected attribute to find Mastery and Rolls
+ * Based on rule: "Mastery is always below the last attribute. the number right to it is the number of reroll."
+ * @param {Array} lines - Array of text strings
+ * @returns {Object} { mastery: number|null, rolls: number|null }
+ */
+function extractFooterData(lines) {
+  let lastStatIndex = -1;
+  const statLinePattern = /[+-]\s*\d+\.?\d*\s*%/;
+
+  // Find the index of the last line that looks like a stat
+  for (let i = 0; i < lines.length; i++) {
+    if (statLinePattern.test(lines[i])) {
+      lastStatIndex = i;
+    }
+  }
+
+  // Start searching after the last stat found. If no stats found, scan the whole text (fallback)
+  const startIndex = lastStatIndex === -1 ? 0 : lastStatIndex + 1;
+
+  for (let i = startIndex; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Look for a line with at least two numbers (e.g. "15 040")
+    // This catches patterns like "(VR 15 040 A" where 15 is MR and 040 is Rolls
+    const numbers = line.match(/\d+/g);
+    
+    if (numbers && numbers.length >= 2) {
+      // Heuristic: First number is MR, second is Rolls
+      // MR is typically between 8 and 18.
+      const mr = parseInt(numbers[0], 10);
+      const rolls = parseInt(numbers[1], 10);
+      
+      // Basic sanity check for MR to avoid picking up random large numbers
+      if (mr <= 18) {
+        return { mastery: mr, rolls: rolls };
+      }
+    }
+  }
+
+  return { mastery: null, rolls: null };
 }
 
 /**

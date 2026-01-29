@@ -293,6 +293,13 @@ function renderRivenForm(data) {
     ocrResultsSection.appendChild(formContainer);
   } else {
     formContainer.innerHTML = ''; // Clear existing
+    formContainer.style.display = 'block'; // Make sure it's visible if it was hidden
+  }
+
+  // Hide Similar Rivens container if it exists
+  const similarContainer = document.getElementById('similarRivensContainer');
+  if (similarContainer) {
+    similarContainer.style.display = 'none';
   }
 
   // Create Form HTML
@@ -406,7 +413,110 @@ function renderRivenForm(data) {
   rollsGroup.appendChild(rollsLabel);
   form.appendChild(rollsGroup);
 
+  // Search Button
+  const searchBtn = document.createElement('button');
+  searchBtn.type = 'button';
+  searchBtn.className = 'btn btn-primary btn-block';
+  searchBtn.textContent = 'Search Similar Rivens';
+  searchBtn.style.marginTop = '16px';
+  searchBtn.onclick = () => {
+    const currentData = getFormDataFromDOM();
+    if (validateFormData(currentData)) {
+        findSimilarRivens(currentData);
+    }
+  };
+  form.appendChild(searchBtn);
+
   formContainer.appendChild(form);
+}
+
+function getFormDataFromDOM() {
+  const form = document.querySelector('.riven-form');
+  if (!form) return null;
+
+  const weaponSelect = form.querySelector('select:first-of-type'); // Assuming first select is weapon
+  // Better to use IDs or specific classes, but based on renderRivenForm:
+  // weaponSelect is in the first form-group.
+  
+  // Let's rely on the structure we built in renderRivenForm
+  const weaponValue = form.querySelector('.form-group:nth-of-type(1) select').value;
+  
+  const stats = [];
+  const attributeRows = form.querySelectorAll('.attribute-row');
+  attributeRows.forEach(row => {
+    const valInput = row.querySelector('input[type="number"]');
+    const attrSelect = row.querySelector('select');
+    
+    if (valInput.value && attrSelect.value) {
+      const value = parseFloat(valInput.value);
+      stats.push({
+        value: Math.abs(value),
+        type: value < 0 ? 'negative' : 'positive',
+        matchedAttribute: {
+          url_name: attrSelect.value
+        }
+      });
+    }
+  });
+
+  // Mastery Rank
+  const mrInput = form.querySelector('.form-group:nth-of-type(4) input'); // 1=Weapon, 2=Attrs Label(not group), 3=AttributesContainer(not group), AddBtn, 4=MR Group
+  // The structure is:
+  // Group(Weapon)
+  // Label(Attributes)
+  // Div(AttributesContainer)
+  // Button(Add)
+  // Group(Mastery)
+  // Group(Polarity)
+  // Group(Rolls)
+  
+  // Let's use robust selectors if possible, or traverse childNodes carefully.
+  // We added classes or IDs?
+  // attributesContainer has ID 'attributesContainer'.
+  
+  // To be safe, let's look for inputs by their context or add IDs in renderRivenForm.
+  // But modifying renderRivenForm to add IDs is easier.
+  // For now I will deduce from the DOM structure assumed.
+
+  // Mastery is the input after "Mastery Rank" label.
+  // We can select all form-groups and check their label.
+  const formGroups = form.querySelectorAll('.form-group');
+  let mrValue = null;
+  let polarityValue = null;
+  
+  formGroups.forEach(group => {
+    const label = group.querySelector('label');
+    if (label && label.textContent === 'Mastery Rank') {
+      mrValue = group.querySelector('input').value;
+    }
+    if (label && label.textContent === 'Polarity') {
+      polarityValue = group.querySelector('select').value;
+    }
+  });
+
+  // Rolls
+  const rollsInput = form.querySelector('input[type="checkbox"]');
+  const unrolled = rollsInput ? rollsInput.checked : false;
+
+  return {
+    weaponName: weaponValue,
+    stats: stats,
+    mastery: mrValue,
+    polarity: polarityValue,
+    rolls: unrolled ? 0 : 1 // 0 if unrolled, >0 otherwise
+  };
+}
+
+function validateFormData(data) {
+    if (!data.weaponName) {
+        alert('Please select a weapon.');
+        return false;
+    }
+    if (data.stats.length === 0) {
+        alert('Please add at least one attribute.');
+        return false;
+    }
+    return true;
 }
 
 function createFormGroup(labelText) {
@@ -483,4 +593,266 @@ function addAttributeRow(container, statData = null) {
   row.appendChild(delBtn);
 
   container.appendChild(row);
+}
+
+// --- Similar Rivens Logic ---
+
+async function findSimilarRivens(data) {
+  const weapon = knownWeapons.find(w => 
+    (w.item_name && w.item_name.toLowerCase() === data.weaponName?.toLowerCase()) || 
+    (w.url_name && w.url_name === data.weaponName)
+  );
+
+  if (!weapon) {
+    console.warn('Weapon not found for search:', data.weaponName);
+    return;
+  }
+
+  const positiveStats = data.stats.filter(s => s.type === 'positive' && s.matchedAttribute);
+  const negativeStats = data.stats.filter(s => s.type === 'negative' && s.matchedAttribute);
+  
+  if (positiveStats.length === 0) {
+    return;
+  }
+
+  const baseQuery = {
+    weapon_url_name: weapon.url_name,
+    buyout_policy: 'direct',
+    sort_by: 'price_asc',
+    platform: 'pc',
+    polarity: 'any'
+  };
+
+  const queries = [];
+
+  // Call 1: Identical
+  const positivesStr = positiveStats.map(s => s.matchedAttribute.url_name).join(',');
+
+  // If there are no negative attributes, query param should not be added
+  const negativesStr = negativeStats.length > 0 
+    ? negativeStats.map(s => s.matchedAttribute.url_name).join(',') 
+    : undefined;
+
+  queries.push({
+    ...baseQuery,
+    positive_stats: positivesStr,
+    ...(negativesStr ? { negative_stats: negativesStr } : {}),
+  });
+
+  // Determine priority rules
+  const potentialRules = [];
+
+  // Rule 1: if there is a negative attribute search without it
+  if (negativeStats.length > 0) {
+    potentialRules.push({
+      ...baseQuery,
+      positive_stats: positivesStr,
+    });
+  }
+
+  // Rule 2: If there are 3 positive attributes, search without the last one
+  if (positiveStats.length === 3) {
+    const subset = positiveStats.slice(0, 2).map(s => s.matchedAttribute.url_name).join(',');
+    potentialRules.push({
+      ...baseQuery,
+      positive_stats: subset,
+      ...(negativesStr ? { negative_stats: negativesStr } : {}),
+    });
+  }
+
+  // Rule 3: Search without the first positive attribute
+  if (positiveStats.length > 1) {
+    const subset = positiveStats.slice(1).map(s => s.matchedAttribute.url_name).join(',');
+    potentialRules.push({
+      ...baseQuery,
+      positive_stats: subset,
+      ...(negativesStr ? { negative_stats: negativesStr } : {}),
+    });
+  }
+
+  // Rule 4: Search without the last positive attribute
+  if (positiveStats.length > 1) {
+    const subset = positiveStats.slice(0, positiveStats.length - 1).map(s => s.matchedAttribute.url_name).join(',');
+    // Check duplication with Rule 2
+    const isDuplicate = potentialRules.some(q => q.positive_stats === subset && q.negative_stats === negativesStr);
+    if (!isDuplicate) {
+        potentialRules.push({
+            ...baseQuery,
+            positive_stats: subset,
+            ...(negativesStr ? { negative_stats: negativesStr } : {}),
+        });
+    }
+  }
+
+  // Select first 2 applicable rules
+  const selectedRules = potentialRules.slice(0, 2);
+  queries.push(...selectedRules);
+
+  renderSimilarRivensLoading();
+
+  try {
+    const results = await Promise.all(queries.map(async (q) => {
+      const auctions = await WarframeAPI.searchAuctions(q);
+      return { query: q, auctions };
+    }));
+    renderSimilarRivens(results, data);
+  } catch (err) {
+    console.error("Error fetching similar rivens", err);
+  }
+}
+
+function renderSimilarRivensLoading() {
+  const ocrResultsSection = document.getElementById('ocrResultsSection');
+  const formContainer = document.getElementById('rivenFormContainer');
+  
+  if (formContainer) formContainer.style.display = 'none';
+
+  let similarContainer = document.getElementById('similarRivensContainer');
+  if (!similarContainer) {
+    similarContainer = document.createElement('div');
+    similarContainer.id = 'similarRivensContainer';
+    ocrResultsSection.appendChild(similarContainer);
+  }
+  
+  similarContainer.style.display = 'block';
+  similarContainer.innerHTML = '<div style="text-align:center; padding: 20px;">Loading similar auctions... ⏳</div>';
+}
+
+function renderSimilarRivens(results, originalData) {
+  const similarContainer = document.getElementById('similarRivensContainer');
+  similarContainer.innerHTML = '';
+
+  // Previous Button
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'btn btn-secondary btn-sm';
+  prevBtn.textContent = '← Back to Form';
+  prevBtn.style.marginBottom = '16px';
+  prevBtn.onclick = () => {
+    similarContainer.style.display = 'none';
+    const formContainer = document.getElementById('rivenFormContainer');
+    if (formContainer) formContainer.style.display = 'block';
+  };
+  similarContainer.appendChild(prevBtn);
+
+  // Title
+  const title = document.createElement('h3');
+  title.textContent = 'Similar Rivens on Market';
+  similarContainer.appendChild(title);
+
+  // Original Riven Attributes (for reference)
+  const originalAttrs = originalData.stats
+    .filter(s => s.matchedAttribute)
+    .map(s => s.matchedAttribute.url_name);
+
+  // Render Results
+  results.forEach(res => {
+    const section = document.createElement('div');
+    section.style.marginBottom = '24px';
+    
+    const sectionTitle = document.createElement('h4');
+    sectionTitle.textContent = `${res.query._label} (${res.auctions.length} results)`;
+    sectionTitle.style.color = '#667eea';
+    sectionTitle.style.marginBottom = '8px';
+    section.appendChild(sectionTitle);
+
+    if (res.auctions.length === 0) {
+      const noRes = document.createElement('div');
+      noRes.textContent = 'No auctions found.';
+      noRes.style.color = '#999';
+      noRes.style.fontStyle = 'italic';
+      section.appendChild(noRes);
+    } else {
+      const list = document.createElement('div');
+      list.style.display = 'flex';
+      list.style.flexDirection = 'column';
+      list.style.gap = '8px';
+      
+      // Limit to top 5 results per query to avoid clutter
+      res.auctions.slice(0, 5).forEach(auction => {
+        list.appendChild(createAuctionCell(auction, originalAttrs));
+      });
+      
+      if (res.auctions.length > 5) {
+        const more = document.createElement('div');
+        more.textContent = `...and ${res.auctions.length - 5} more`;
+        more.style.fontSize = '12px';
+        more.style.color = '#666';
+        more.style.textAlign = 'center';
+        list.appendChild(more);
+      }
+
+      section.appendChild(list);
+    }
+    similarContainer.appendChild(section);
+  });
+}
+
+function createAuctionCell(auction, originalAttrs) {
+  const cell = document.createElement('div');
+  cell.className = 'auction-cell';
+  cell.style.border = '1px solid #eee';
+  cell.style.borderRadius = '8px';
+  cell.style.padding = '12px';
+  cell.style.background = '#fff';
+  cell.style.display = 'flex';
+  cell.style.justifyContent = 'space-between';
+  cell.style.alignItems = 'center';
+
+  // Info (Attributes)
+  const infoDiv = document.createElement('div');
+  infoDiv.style.flex = '1';
+
+  // Riven Name
+  const nameDiv = document.createElement('div');
+  nameDiv.textContent = `${auction.item.name} (Rank ${auction.item.mod_rank})`;
+  nameDiv.style.fontWeight = 'bold';
+  nameDiv.style.marginBottom = '4px';
+  nameDiv.style.fontSize = '14px';
+  infoDiv.appendChild(nameDiv);
+
+  // Attributes List
+  const attrsDiv = document.createElement('div');
+  attrsDiv.style.display = 'flex';
+  attrsDiv.style.flexWrap = 'wrap';
+  attrsDiv.style.gap = '6px';
+
+  if (auction.item && auction.item.attributes) {
+    auction.item.attributes.forEach(attr => {
+      const tag = document.createElement('span');
+      tag.textContent = `${attr.value} ${attr.url_name.replace(/_/g, ' ')}`;
+      tag.style.fontSize = '11px';
+      tag.style.padding = '2px 6px';
+      tag.style.borderRadius = '4px';
+      
+      // Check if common with original
+      const isCommon = originalAttrs.includes(attr.url_name);
+      if (isCommon) {
+        tag.style.background = '#d1fae5'; // Green-ish
+        tag.style.color = '#065f46';
+        tag.style.border = '1px solid #a7f3d0';
+      } else {
+        tag.style.background = '#f3f4f6'; // Grey
+        tag.style.color = '#4b5563';
+        tag.style.border = '1px solid #e5e7eb';
+      }
+      
+      attrsDiv.appendChild(tag);
+    });
+  }
+  infoDiv.appendChild(attrsDiv);
+
+  cell.appendChild(infoDiv);
+
+  // Price
+  const priceDiv = document.createElement('div');
+  priceDiv.style.fontWeight = 'bold';
+  priceDiv.style.fontSize = '16px';
+  priceDiv.style.color = '#667eea';
+  priceDiv.style.marginLeft = '16px';
+  priceDiv.style.whiteSpace = 'nowrap';
+  priceDiv.textContent = `${auction.buyout_price || auction.starting_price} P`;
+  
+  cell.appendChild(priceDiv);
+
+  return cell;
 }

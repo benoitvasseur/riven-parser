@@ -225,6 +225,31 @@ async function getUserInfo() {
   });
 }
 
+/**
+ * Récupère la liste des items Riven disponibles
+ * @returns {Promise<Array>} Liste des items
+ */
+async function getRivenItems() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/riven/items`, {
+      method: 'GET',
+      headers: {
+        'Language': 'en' // Par défaut en anglais pour matcher l'OCR qui est souvent en anglais sur Warframe
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur API: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.payload.items;
+  } catch (error) {
+    console.error('Erreur lors de la récupération des items Riven:', error);
+    return [];
+  }
+}
+
 // Exporter les fonctions pour utilisation dans d'autres scripts
 window.WarframeAPI = {
   signIn,
@@ -232,5 +257,6 @@ window.WarframeAPI = {
   isAuthenticated,
   getAuthToken,
   authenticatedRequest,
-  getUserInfo
+  getUserInfo,
+  getRivenItems
 };

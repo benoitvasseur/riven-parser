@@ -3,10 +3,11 @@
 /**
  * Parses Riven mod data from OCR text
  * @param {string} text - Raw OCR text
+ * @param {Array} knownWeapons - Optional list of valid weapon names to fuzzy match against
  * @returns {Object} Parsed Riven data
  */
-export function parseRivenData(text) {
-  console.log('Parsing Riven data from text:', text);
+export function parseRivenData(text, knownWeapons = []) {
+  console.log('Parsing Riven data from text:', text, knownWeapons);
   
   const rivenData = {
     weaponName: null,
@@ -21,7 +22,7 @@ export function parseRivenData(text) {
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
   
   // Extract weapon name (usually first line or contains "Riven")
-  rivenData.weaponName = extractWeaponName(lines);
+  rivenData.weaponName = extractWeaponName(lines, knownWeapons);
   
   // Extract stats (look for +/- percentages)
   rivenData.stats = extractStats(text);
@@ -39,12 +40,94 @@ export function parseRivenData(text) {
 }
 
 /**
+ * Calculates Levenshtein distance between two strings
+ * @param {string} a 
+ * @param {string} b 
+ * @returns {number} Distance
+ */
+function levenshteinDistance(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix = [];
+
+  // increment along the first column of each row
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  // increment each column in the first row
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  // Fill in the rest of the matrix
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          Math.min(
+            matrix[i][j - 1] + 1, // insertion
+            matrix[i - 1][j] + 1 // deletion
+          )
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+/**
  * Extracts weapon name from text
  * @param {Array} lines - Text lines
+ * @param {Array} knownWeapons - Optional list of known weapons
  * @returns {string|null} Weapon name
  */
-function extractWeaponName(lines) {
+function extractWeaponName(lines, knownWeapons = []) {
   if (!lines || lines.length === 0) return null;
+  
+  // Strategy: Scan lines to find the best matching weapon name.
+  // We prioritize matches on longer weapon names to avoid false positives with short names (like "Bo") in noisy text.
+  
+  if (knownWeapons && knownWeapons.length > 0) {
+    const allCandidates = [];
+
+    // Scan more lines, as OCR noise can push the name down (e.g. line 11)
+    // We scan up to 20 lines or all lines if fewer
+    const linesToScan = lines.slice(0, 20);
+
+    for (const line of linesToScan) {
+      let cleanedLine = line;
+      // Remove "Riven Mod" or "Riven" suffix if present explicitly
+      const rivenMatch = line.match(/(.+?)\s*Riven/i);
+      if (rivenMatch) {
+        cleanedLine = rivenMatch[1].trim();
+      }
+
+      // Find candidates in this line
+      const candidatesInLine = findWeaponCandidates(cleanedLine, knownWeapons);
+      allCandidates.push(...candidatesInLine);
+    }
+
+    if (allCandidates.length > 0) {
+      // Sort globally: Longest name first, then best distance
+      allCandidates.sort((a, b) => {
+        if (b.length !== a.length) {
+          return b.length - a.length; // Descending length
+        }
+        return a.dist - b.dist; // Ascending distance
+      });
+
+      return allCandidates[0].name;
+    }
+  }
+
+  // Legacy behavior / Fallback if no known weapons or no match found
+  // ...
   
   // Look for lines containing "Riven" or weapon names
   for (const line of lines) {
@@ -56,7 +139,68 @@ function extractWeaponName(lines) {
   }
   
   // If no "Riven" found, return first line as potential weapon name
-  return lines[0];
+  return lines[0].split('-')[0].trim();
+}
+
+/**
+ * Finds all potential weapon matches in a raw string
+ * @param {string} rawName 
+ * @param {Array} knownWeapons 
+ * @returns {Array} List of candidates {name, dist, length}
+ */
+function findWeaponCandidates(rawName, knownWeapons) {
+  const candidates = [];
+  const normalizedRaw = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (normalizedRaw.length < 2) return []; // Ignore too short lines
+
+  for (const weapon of knownWeapons) {
+    const weaponName = typeof weapon === 'string' ? weapon : weapon.item_name || weapon.url_name;
+    if (!weaponName) continue;
+
+    const normalizedWeapon = weaponName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Optimization: check if raw name starts with weapon name
+    if (normalizedRaw.startsWith(normalizedWeapon)) {
+       candidates.push({
+         name: weaponName,
+         dist: 0,
+         length: normalizedWeapon.length
+       });
+       continue;
+    }
+
+    // Truncate raw string for fuzzy comparison
+    // We try strictly the length of the weapon, and length + 1 to account for potential single insertion
+    // If the raw string continues without space (e.g. "WeaponSuffix"), we want to match "Weapon"
+    
+    const subExact = normalizedRaw.substring(0, normalizedWeapon.length);
+    const distExact = levenshteinDistance(subExact, normalizedWeapon);
+    
+    let dist = distExact;
+
+    // Optional: Check slightly longer substring if it helps (e.g. missing char in OCR but followed by noise)
+    // But generally, comparing equal lengths is safer for prefix matching
+    
+    // Adjust threshold based on length
+    // Short names must be very accurate
+    let threshold;
+    if (normalizedWeapon.length <= 3) {
+      threshold = 0; // Exact match only for 2-3 char names like "Bo", "Uz"
+    } else if (normalizedWeapon.length <= 6) {
+      threshold = 1; // 1 error max for medium short
+    } else {
+      threshold = Math.floor(normalizedWeapon.length / 3); // Allow ~33% errors for long names
+    }
+
+    if (dist <= threshold) {
+      candidates.push({
+        name: weaponName,
+        dist: dist,
+        length: normalizedWeapon.length
+      });
+    }
+  }
+  return candidates;
 }
 
 /**

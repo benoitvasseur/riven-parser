@@ -4,9 +4,10 @@
  * Parses Riven mod data from OCR text
  * @param {string} text - Raw OCR text
  * @param {Array} knownWeapons - Optional list of valid weapon names to fuzzy match against
+ * @param {Array} knownAttributes - Optional list of valid attributes to match stats against
  * @returns {Object} Parsed Riven data
  */
-export function parseRivenData(text, knownWeapons = []) {
+export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
   console.log('Parsing Riven data from text:', text, knownWeapons);
   
   const rivenData = {
@@ -26,6 +27,13 @@ export function parseRivenData(text, knownWeapons = []) {
   
   // Extract stats (look for +/- percentages)
   rivenData.stats = extractStats(text);
+
+  // Match stats to known attributes
+  if (knownAttributes && knownAttributes.length > 0) {
+    rivenData.stats.forEach(stat => {
+      stat.matchedAttribute = findBestAttributeMatch(stat.name, knownAttributes);
+    });
+  }
   
   // Extract mastery requirement
   rivenData.mastery = extractMastery(text);
@@ -407,4 +415,64 @@ export function formatRivenData(rivenData) {
   }
   
   return output;
+}
+
+/**
+ * Finds the best matching attribute for a given raw stat name
+ * Priorities:
+ * 1. Exact match (case insensitive)
+ * 2. Inclusion (substring) - prefers smallest length difference
+ * 3. Levenshtein distance - prefers smallest distance
+ * 
+ * @param {string} rawName 
+ * @param {Array} knownAttributes 
+ * @returns {Object|null} Best matching attribute or null
+ */
+function findBestAttributeMatch(rawName, knownAttributes) {
+  if (!rawName || !knownAttributes) return null;
+  
+  const normalizedRaw = rawName.toLowerCase().trim();
+  let bestMatch = null;
+  // Score types: 3 = Exact, 2 = Inclusion, 1 = Levenshtein
+  let bestScoreType = 0; 
+  let bestDist = Infinity; // For Levenshtein (lower is better) or Length Diff for Inclusion (lower is better)
+
+  for (const attr of knownAttributes) {
+    const attrEffect = attr.effect.toLowerCase();
+    
+    // 1. Exact Match
+    if (attrEffect === normalizedRaw) {
+      return attr; // Best possible match, return immediately
+    }
+    
+    // 2. Inclusion
+    if (attrEffect.includes(normalizedRaw) || normalizedRaw.includes(attrEffect)) {
+      if (bestScoreType < 2) {
+        // Found first inclusion, upgrades previous Levenshtein matches
+        bestScoreType = 2;
+        bestMatch = attr;
+        bestDist = Math.abs(attrEffect.length - normalizedRaw.length);
+      } else if (bestScoreType === 2) {
+        // Already have an inclusion, check if this one is better (closer in length)
+        const diff = Math.abs(attrEffect.length - normalizedRaw.length);
+        if (diff < bestDist) {
+          bestMatch = attr;
+          bestDist = diff;
+        }
+      }
+      continue;
+    }
+    
+    // 3. Levenshtein Distance
+    if (bestScoreType < 2) { // Only check if we haven't found an inclusion or exact match yet
+      const dist = levenshteinDistance(normalizedRaw, attrEffect);
+      if (dist < bestDist) {
+        bestScoreType = 1;
+        bestMatch = attr;
+        bestDist = dist;
+      }
+    }
+  }
+  
+  return bestMatch;
 }

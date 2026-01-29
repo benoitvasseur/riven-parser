@@ -262,7 +262,7 @@ function analyzeRivenData(result) {
   console.log('OCR Text:', result.data.text);
   
   // Parse the OCR text
-  const rivenData = parseRivenData(result.data.text, knownWeapons);
+  const rivenData = parseRivenData(result.data.text, knownWeapons, knownAttributes);
   console.log('Parsed Riven data:', rivenData);
   
   // Validate the data (optional, just for logging)
@@ -461,10 +461,8 @@ function addAttributeRow(container, statData = null) {
     option.value = attr.url_name;
     option.textContent = attr.effect;
     
-    // Fuzzy match
-    if (statData && statData.name && 
-        (attr.effect.toLowerCase().includes(statData.name.toLowerCase()) || 
-         statData.name.toLowerCase().includes(attr.effect.toLowerCase()))) {
+    // Match based on pre-calculated matchedAttribute from parser
+    if (statData && statData.matchedAttribute && statData.matchedAttribute.url_name === attr.url_name) {
       option.selected = true;
     }
     attrSelect.appendChild(option);

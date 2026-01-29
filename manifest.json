@@ -19,6 +19,15 @@
     "https://api.warframe.market/*",
     "https://warframe.market/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; script-src-elem 'self'; worker-src 'self'; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["libs/*.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "action": {
     "default_title": "Ouvrir Riven Market"
   },

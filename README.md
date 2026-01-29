@@ -34,6 +34,10 @@ riven-market/
 - **Interface moderne** : Design élégant avec gradient et animations
 - **Gestion utilisateur** : Affichage des informations de profil et déconnexion
 - **Auto-refresh des tokens** : Rafraîchissement automatique quand le token expire
+- **📷 Upload d'images** : Glissez-déposez ou sélectionnez des captures d'écran de Riven mods
+- **🔍 OCR automatique** : Reconnaissance de texte via Tesseract.js avec suivi de progression
+- **📊 Analyse intelligente** : Extraction automatique des données Riven (arme, stats, MR, rolls, polarité)
+- **✅ Validation** : Vérification de la cohérence des données extraites
 
 ## 📝 Utilisation
 
@@ -105,11 +109,54 @@ Les données suivantes sont sauvegardées dans `chrome.storage.local` :
   - `https://api.warframe.market/*` (API)
   - `https://warframe.market/*` (OAuth authorization)
 
+## 🔍 OCR et Analyse de Riven
+
+### Comment utiliser l'OCR
+
+1. **Capturez une image** : Prenez une capture d'écran de votre Riven mod dans Warframe
+2. **Uploadez l'image** : 
+   - Glissez-déposez l'image dans la zone de dépôt
+   - Ou cliquez pour sélectionner un fichier
+3. **Analyse automatique** : Tesseract.js analyse l'image en temps réel
+4. **Vérifiez les résultats** :
+   - Niveau de confiance affiché (%)
+   - Texte brut détecté
+   - Cliquez sur "Analyze Riven Data" pour extraire les informations structurées
+
+### Données extraites
+
+Le parser Riven extrait automatiquement :
+
+- **Nom de l'arme** : Ex: "Tonkor", "Rubico", "Acceltra"
+- **Stats** : 
+  - Positives (ex: +120.5% Critical Chance)
+  - Négatives (ex: -45.2% Fire Rate)
+- **Mastery Rank** : Niveau de maîtrise requis
+- **Rolls** : Nombre de fois que le Riven a été roulé
+- **Polarité** : Type de polarité (Madurai, Vazarin, etc.)
+
+### Test de l'OCR
+
+Un fichier de test est disponible : `test-ocr.html`
+
+Ouvrez-le dans votre navigateur pour tester l'OCR sans charger l'extension complète.
+
+### Technologies OCR
+
+- **Tesseract.js v5** : Moteur OCR en JavaScript
+- **WebAssembly** : Pour des performances optimales
+- **Worker réutilisable** : Un seul worker pour toutes les analyses
+
+Pour plus de détails, consultez `OCR_INTEGRATION.md`.
+
 ## 🎯 Prochaines étapes
 
-- [ ] Ajouter des icônes personnalisées (16x16, 48x48, 128x128 pixels)
-- [ ] Implémenter la recherche de Rivens
-- [ ] Afficher les offres du marché
+- [x] ~~Ajouter l'OCR avec Tesseract.js~~
+- [x] ~~Parser les données Riven~~
+- [ ] Améliorer la précision OCR avec prétraitement d'image
+- [ ] Sauvegarder les Rivens analysés dans le storage
+- [ ] Implémenter la recherche de Rivens sur le marché
+- [ ] Afficher les offres du marché pour les Rivens similaires
 - [ ] Gérer les transactions
 - [ ] Ajouter des notifications pour les nouvelles offres
 - [ ] Implémenter le filtrage et le tri des résultats

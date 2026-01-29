@@ -1,4 +1,8 @@
 // Module for "New" tab
+import { parseRivenData, validateRivenData, formatRivenData } from './riven-parser.js';
+
+// Tesseract worker instance
+let tesseractWorker = null;
 
 /**
  * Initializes the New tab content
@@ -6,6 +10,7 @@
 export function initNouveauTab() {
   console.log('New tab initialized');
   initImageUpload();
+  initTesseractWorker();
 }
 
 /**
@@ -13,6 +18,47 @@ export function initNouveauTab() {
  */
 export function refreshNouveauTab() {
   console.log('New tab refreshed');
+}
+
+/**
+ * Cleans up resources (call when leaving tab or closing extension)
+ */
+export async function cleanupNouveauTab() {
+  if (tesseractWorker) {
+    console.log('Terminating Tesseract worker...');
+    await tesseractWorker.terminate();
+    tesseractWorker = null;
+  }
+}
+
+/**
+ * Initializes Tesseract worker for OCR
+ */
+async function initTesseractWorker() {
+  try {
+    console.log('Initializing Tesseract worker...');
+    
+    // Configuration for Chrome extension
+    const workerPath = chrome.runtime.getURL('libs/worker.min.js');
+    const corePath = chrome.runtime.getURL('libs/tesseract.min.js');
+    
+    console.log('Worker path:', workerPath);
+    console.log('Core path:', corePath);
+    
+    tesseractWorker = await Tesseract.createWorker('eng', 1, {
+      workerPath: workerPath,
+      corePath: corePath,
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          updateOCRProgress(m.progress);
+        }
+      }
+    });
+    console.log('Tesseract worker initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Tesseract worker:', error);
+  }
 }
 
 /**
@@ -110,11 +156,17 @@ function clearImage() {
   const imagePreview = document.getElementById('imagePreview');
   const dropZoneContent = document.querySelector('.drop-zone-content');
   const previewImg = document.getElementById('previewImg');
+  const ocrResultsSection = document.getElementById('ocrResultsSection');
 
   fileInput.value = '';
   previewImg.src = '';
   imagePreview.style.display = 'none';
   dropZoneContent.style.display = 'flex';
+  
+  // Hide OCR results section
+  if (ocrResultsSection) {
+    ocrResultsSection.style.display = 'none';
+  }
 }
 
 /**
@@ -122,7 +174,131 @@ function clearImage() {
  * @param {File} file - The image file
  * @param {string} dataUrl - The data URL of the image
  */
-function handleNewRivenImg(file, dataUrl) {
-  // TODO: Implementation coming soon
+async function handleNewRivenImg(file, dataUrl) {
   console.log('New Riven image received:', file.name, file.size, 'bytes');
+  
+  // Show OCR section
+  const ocrResultsSection = document.getElementById('ocrResultsSection');
+  const ocrStatus = document.getElementById('ocrStatus');
+  const ocrResults = document.getElementById('ocrResults');
+  
+  ocrResultsSection.style.display = 'block';
+  ocrStatus.style.display = 'flex';
+  ocrResults.style.display = 'none';
+  
+  // Update status
+  updateOCRStatus('⏳', 'Initializing OCR...');
+  
+  try {
+    // Ensure worker is initialized
+    if (!tesseractWorker) {
+      await initTesseractWorker();
+    }
+    
+    updateOCRStatus('🔍', 'Analyzing image...');
+    
+    // Perform OCR
+    const result = await tesseractWorker.recognize(dataUrl);
+    
+    console.log('OCR result:', result);
+    
+    // Display results
+    displayOCRResults(result);
+    
+  } catch (error) {
+    console.error('OCR error:', error);
+    updateOCRStatus('❌', 'OCR failed. Please try again.');
+  }
+}
+
+/**
+ * Updates OCR status message
+ * @param {string} icon - Status icon
+ * @param {string} message - Status message
+ */
+function updateOCRStatus(icon, message) {
+  const statusIcon = document.querySelector('.ocr-status-icon');
+  const statusText = document.getElementById('ocrStatusText');
+  
+  if (statusIcon) statusIcon.textContent = icon;
+  if (statusText) statusText.textContent = message;
+}
+
+/**
+ * Updates OCR progress
+ * @param {number} progress - Progress value (0-1)
+ */
+function updateOCRProgress(progress) {
+  const percentage = Math.round(progress * 100);
+  updateOCRStatus('🔍', `Analyzing image... ${percentage}%`);
+}
+
+/**
+ * Displays OCR results
+ * @param {Object} result - Tesseract recognition result
+ */
+function displayOCRResults(result) {
+  const ocrStatus = document.getElementById('ocrStatus');
+  const ocrResults = document.getElementById('ocrResults');
+  const ocrConfidence = document.getElementById('ocrConfidence');
+  const ocrText = document.getElementById('ocrText');
+  
+  // Hide status, show results
+  ocrStatus.style.display = 'none';
+  ocrResults.style.display = 'block';
+  
+  // Display confidence
+  const confidence = Math.round(result.data.confidence);
+  ocrConfidence.textContent = `${confidence}%`;
+  
+  // Apply color based on confidence
+  if (confidence >= 80) {
+    ocrConfidence.style.color = '#28a745';
+  } else if (confidence >= 60) {
+    ocrConfidence.style.color = '#ffc107';
+  } else {
+    ocrConfidence.style.color = '#dc3545';
+  }
+  
+  // Display text
+  ocrText.value = result.data.text;
+  
+  // Initialize analyze button
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  analyzeBtn.onclick = () => analyzeRivenData(result);
+}
+
+/**
+ * Analyzes Riven data from OCR result
+ * @param {Object} result - Tesseract recognition result
+ */
+function analyzeRivenData(result) {
+  console.log('Analyzing Riven data...');
+  console.log('OCR Text:', result.data.text);
+  
+  // Parse the OCR text
+  const rivenData = parseRivenData(result.data.text);
+  console.log('Parsed Riven data:', rivenData);
+  
+  // Validate the data
+  const validation = validateRivenData(rivenData);
+  console.log('Validation result:', validation);
+  
+  // Format and display results
+  const formattedData = formatRivenData(rivenData);
+  
+  let message = '📊 Analyse Riven\n\n';
+  
+  if (validation.isValid) {
+    message += formattedData;
+    message += '\n✅ Données valides!';
+  } else {
+    message += formattedData;
+    message += '\n\n⚠️ Avertissements:\n';
+    validation.errors.forEach(error => {
+      message += `  • ${error}\n`;
+    });
+  }
+  
+  alert(message);
 }

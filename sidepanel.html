@@ -111,6 +111,28 @@
                   <button type="button" class="btn-remove" id="removeBtn" title="Remove">×</button>
                 </div>
               </div>
+              
+              <!-- OCR Results Section -->
+              <div id="ocrResultsSection" class="ocr-results-section" style="display: none;">
+                <h3>OCR Results</h3>
+                <div id="ocrStatus" class="ocr-status">
+                  <span class="ocr-status-icon">⏳</span>
+                  <span id="ocrStatusText">Processing image...</span>
+                </div>
+                <div id="ocrResults" class="ocr-results" style="display: none;">
+                  <div class="ocr-confidence">
+                    <span>Confidence: </span>
+                    <span id="ocrConfidence" class="confidence-value">-</span>
+                  </div>
+                  <div class="ocr-text-container">
+                    <label>Detected Text:</label>
+                    <textarea id="ocrText" class="ocr-textarea" rows="10" readonly></textarea>
+                  </div>
+                  <button type="button" class="btn btn-primary" id="analyzeBtn">
+                    Analyze Riven Data
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -126,15 +148,11 @@
     </footer>
   </div>
   
+  <!-- Tesseract.js Local -->
+  <script src='libs/tesseract.min.js'></script>
+  
   <script src="scripts/api.js"></script>
-  <script type="module">
-    import { initNouveauTab } from './scripts/nouveau-tab.js';
-    import { initRivensTab } from './scripts/rivens-tab.js';
-    
-    // Rendre les fonctions disponibles globalement
-    window.initNouveauTab = initNouveauTab;
-    window.initRivensTab = initRivensTab;
-  </script>
+  <script type="module" src="scripts/modules-loader.js"></script>
   <script src="scripts/sidepanel.js"></script>
 </body>
 </html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Parser - Riven Market</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    
+    .section {
+      margin-bottom: 30px;
+    }
+    
+    .section h2 {
+      color: #333;
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 150px;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .results {
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .results pre {
+      margin: 0;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .validation {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    
+    .validation.valid {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      color: #155724;
+    }
+    
+    .validation.invalid {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      color: #721c24;
+    }
+    
+    .examples {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .example-btn {
+      background: #f0f4ff;
+      border: 2px solid #667eea;
+      color: #667eea;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    
+    .example-btn:hover {
+      background: #667eea;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Test Parser Riven</h1>
+    <p class="subtitle">Testez l'extraction de données Riven à partir de texte OCR</p>
+    
+    <div class="section">
+      <h2>📝 Texte OCR brut</h2>
+      <p style="color: #666; font-size: 13px; margin-bottom: 10px;">
+        Collez ici le texte extrait par OCR ou utilisez un exemple ci-dessous
+      </p>
+      <textarea id="inputText" placeholder="Ex: Tonkor Riven
++120.5% Critical Chance
++85.3% Multishot
+-30.2% Zoom
+Mastery Rank 8
+Rolled 3 times
+Madurai Polarity"></textarea>
+      
+      <div class="examples">
+        <button class="example-btn" onclick="loadExample(1)">Exemple 1: Tonkor</button>
+        <button class="example-btn" onclick="loadExample(2)">Exemple 2: Rubico</button>
+        <button class="example-btn" onclick="loadExample(3)">Exemple 3: Acceltra</button>
+      </div>
+      
+      <button class="btn" onclick="parseText()">🔍 Analyser</button>
+    </div>
+    
+    <div class="section" id="resultsSection" style="display: none;">
+      <h2>📊 Résultats</h2>
+      <div class="results">
+        <pre id="results"></pre>
+      </div>
+      
+      <div class="validation" id="validation">
+        <strong>Validation:</strong>
+        <div id="validationText"></div>
+      </div>
+    </div>
+    
+    <div class="section" id="rawDataSection" style="display: none;">
+      <h2>🔍 Données brutes (JSON)</h2>
+      <div class="results">
+        <pre id="rawData"></pre>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { parseRivenData, validateRivenData, formatRivenData } from './scripts/riven-parser.js';
+    
+    // Make functions available globally
+    window.parseRivenData = parseRivenData;
+    window.validateRivenData = validateRivenData;
+    window.formatRivenData = formatRivenData;
+  </script>
+  
+  <script>
+    const examples = {
+      1: `Tonkor Riven
++120.5% Critical Chance
++85.3% Multishot
+-30.2% Zoom
+Mastery Rank 8
+Rolled 3 times
+Madurai Polarity`,
+      
+      2: `Rubico Riven
++165.7% Critical Damage
++93.2% Critical Chance
+-50.5% Damage to Corpus
+Mastery Rank 12
+Rolled 15 times
+Vazarin Polarity`,
+      
+      3: `Acceltra Riven
++215.3% Damage
++102.4% Multishot
++78.9% Fire Rate
+-95.2% Status Duration
+Mastery Rank 10
+Rolled 7 times
+Naramon Polarity`
+    };
+    
+    function loadExample(num) {
+      document.getElementById('inputText').value = examples[num];
+    }
+    
+    function parseText() {
+      const text = document.getElementById('inputText').value.trim();
+      
+      if (!text) {
+        alert('Veuillez entrer du texte OCR');
+        return;
+      }
+      
+      // Parse the data
+      const rivenData = window.parseRivenData(text);
+      
+      // Validate
+      const validation = window.validateRivenData(rivenData);
+      
+      // Format
+      const formatted = window.formatRivenData(rivenData);
+      
+      // Display results
+      document.getElementById('results').textContent = formatted || 'Aucune donnée extraite';
+      document.getElementById('resultsSection').style.display = 'block';
+      
+      // Display validation
+      const validationDiv = document.getElementById('validation');
+      const validationText = document.getElementById('validationText');
+      
+      if (validation.isValid) {
+        validationDiv.className = 'validation valid';
+        validationText.innerHTML = '✅ Toutes les données sont valides';
+      } else {
+        validationDiv.className = 'validation invalid';
+        validationText.innerHTML = '⚠️ Problèmes détectés:<br>' + 
+          validation.errors.map(e => `• ${e}`).join('<br>');
+      }
+      
+      // Display raw JSON
+      document.getElementById('rawData').textContent = JSON.stringify(rivenData, null, 2);
+      document.getElementById('rawDataSection').style.display = 'block';
+    }
+    
+    // Make functions available globally
+    window.loadExample = loadExample;
+    window.parseText = parseText;
+  </script>
+</body>
+</html>

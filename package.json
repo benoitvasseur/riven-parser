@@ -1,0 +1,16 @@
+{
+  "name": "riven-market",
+  "version": "1.0.0",
+  "description": "Extension Chrome avec sidepanel pour faciliter les interactions avec Warframe Market via l'API publique.",
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "mkdir -p libs && cp node_modules/tesseract.js/dist/tesseract.min.js libs/ && cp node_modules/tesseract.js/dist/worker.min.js libs/"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tesseract.js": "^7.0.0"
+  }
+}

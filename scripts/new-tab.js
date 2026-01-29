@@ -4,6 +4,12 @@ import { parseRivenData, validateRivenData, formatRivenData } from './riven-pars
 // Tesseract worker instance
 let tesseractWorker = null;
 
+let knownWeapons = [];
+
+async function loadKnownWeapons() {
+  knownWeapons = await WarframeAPI.getRivenItems();
+}
+
 /**
  * Initializes the New tab content
  */
@@ -11,6 +17,7 @@ export function initNouveauTab() {
   console.log('New tab initialized');
   initImageUpload();
   initTesseractWorker();
+  loadKnownWeapons();
 }
 
 /**
@@ -278,7 +285,7 @@ function analyzeRivenData(result) {
   console.log('OCR Text:', result.data.text);
   
   // Parse the OCR text
-  const rivenData = parseRivenData(result.data.text);
+  const rivenData = parseRivenData(result.data.text, knownWeapons);
   console.log('Parsed Riven data:', rivenData);
   
   // Validate the data

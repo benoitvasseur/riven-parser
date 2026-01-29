@@ -637,6 +637,7 @@ async function findSimilarRivens(data) {
     ...baseQuery,
     positive_stats: positivesStr,
     ...(negativesStr ? { negative_stats: negativesStr } : {}),
+    _label: 'Similar',
   });
 
   // Determine priority rules
@@ -647,6 +648,7 @@ async function findSimilarRivens(data) {
     potentialRules.push({
       ...baseQuery,
       positive_stats: positivesStr,
+      _label: 'Similar without negative attribute',
     });
   }
 
@@ -657,6 +659,7 @@ async function findSimilarRivens(data) {
       ...baseQuery,
       positive_stats: subset,
       ...(negativesStr ? { negative_stats: negativesStr } : {}),
+      _label: 'Similar without last attribute',
     });
   }
 
@@ -667,6 +670,7 @@ async function findSimilarRivens(data) {
       ...baseQuery,
       positive_stats: subset,
       ...(negativesStr ? { negative_stats: negativesStr } : {}),
+      _label: 'Similar without first attribute',
     });
   }
 
@@ -680,6 +684,7 @@ async function findSimilarRivens(data) {
             ...baseQuery,
             positive_stats: subset,
             ...(negativesStr ? { negative_stats: negativesStr } : {}),
+            _label: 'Similar without last attribute',
         });
     }
   }

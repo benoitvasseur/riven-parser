@@ -4,7 +4,7 @@
 
 ### Worker Configuration
 
-Le worker Tesseract est configuré dans `scripts/nouveau-tab.js` :
+Le worker Tesseract est configuré dans `scripts/new-tab.js` :
 
 ```javascript
 tesseractWorker = await Tesseract.createWorker('eng', 1, {
@@ -186,7 +186,7 @@ const MAX_STATS = 4;
 
 ### Mode debug
 
-Pour activer plus de logs, modifiez `nouveau-tab.js` :
+Pour activer plus de logs, modifiez `new-tab.js` :
 
 ```javascript
 // Activer tous les logs Tesseract

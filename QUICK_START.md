@@ -35,7 +35,7 @@ Ouvrez `test-parser.html` dans votre navigateur pour tester l'extraction de donn
 ## 🔧 Fichiers modifiés
 
 - `sidepanel.html` : Ajout du script Tesseract et de l'interface OCR
-- `scripts/nouveau-tab.js` : Intégration de Tesseract et gestion de l'OCR
+- `scripts/new-tab.js` : Intégration de Tesseract et gestion de l'OCR
 - `scripts/riven-parser.js` : **NOUVEAU** - Parser de données Riven
 - `styles/sidepanel.css` : Styles pour la section OCR
 - `manifest.json` : Content Security Policy mise à jour

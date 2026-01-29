@@ -34,7 +34,7 @@ Les fichiers Tesseract.js ont été copiés localement dans l'extension.
 4. **Mise à jour de `test-ocr.html`**
    - Même changement que pour `sidepanel.html`
 
-5. **Mise à jour de `scripts/nouveau-tab.js`**
+5. **Mise à jour de `scripts/new-tab.js`**
    - Configuration du `workerPath` pour pointer vers `libs/worker.min.js`
    - Configuration du `langPath` pour utiliser le CDN officiel des données de langue
 
@@ -46,7 +46,7 @@ Les fichiers Tesseract.js ont été copiés localement dans l'extension.
 - ✅ `manifest.json`
 - ✅ `sidepanel.html`
 - ✅ `test-ocr.html`
-- ✅ `scripts/nouveau-tab.js`
+- ✅ `scripts/new-tab.js`
 - ✅ `package.json`
 
 ### Nouveaux fichiers

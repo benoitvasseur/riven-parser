@@ -18,6 +18,8 @@ Thumbs.db
 # Logs
 *.log
 
+.cursor/
+
 # Package files
 *.crx
 *.pem

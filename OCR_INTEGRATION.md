@@ -13,7 +13,7 @@ Ce projet utilise Tesseract.js pour effectuer la reconnaissance optique de carac
    - Ajout d'une section pour afficher les résultats OCR
    - Interface utilisateur pour le processus de reconnaissance
 
-2. **scripts/nouveau-tab.js**
+2. **scripts/new-tab.js**
    - Initialisation du worker Tesseract
    - Fonction `initTesseractWorker()` pour créer un worker réutilisable
    - Fonction `handleNewRivenImg()` pour traiter les images uploadées

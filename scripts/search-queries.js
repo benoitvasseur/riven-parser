@@ -61,6 +61,7 @@ export function generateSimilarRivenQueries(data, knownWeapons) {
     potentialRules.push({
       ...baseQuery,
       positive_stats: positivesStr,
+      negative_stats: "none",
       _label: 'Similar without negative attribute',
     });
   }
@@ -73,8 +74,10 @@ export function generateSimilarRivenQueries(data, knownWeapons) {
     const similarGroup = similarAttributes.find(group => group.includes(attrName));
     
     if (similarGroup) {
+      // Remove from the group attribute that is already in the positive stats
+      const newGroup = similarGroup.filter(attr => !positiveStats.some(s => s.matchedAttribute.url_name === attr));
       // For each other attribute in the group
-      similarGroup.forEach(similarAttr => {
+      newGroup.forEach(similarAttr => {
         if (similarAttr !== attrName) {
             // Create a new list of positives with the replacement
             const newPositiveNames = positiveStats.map(s => s.matchedAttribute.url_name);
@@ -125,7 +128,7 @@ export function generateSimilarRivenQueries(data, knownWeapons) {
             ...baseQuery,
             positive_stats: subset,
             ...(negativesStr ? { negative_stats: negativesStr } : {}),
-            _label: 'Similar without last attribute',
+            _label: 'Similar one less attribute',
         });
     }
   }

@@ -1,0 +1,4 @@
+- List user auctions
+- Handle unrolled differently
+- Possibility to update an existing auction
+- Try to handle riven name better

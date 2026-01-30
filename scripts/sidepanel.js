@@ -200,5 +200,10 @@ function switchTab(tabName) {
     activeButton.classList.add('active');
     activePane.classList.add('active');
     console.log(`Tab "${tabName}" activated`);
+    
+    // Refresh specific tab content
+    if (tabName === 'rivens' && window.refreshRivensTab) {
+      window.refreshRivensTab();
+    }
   }
 }

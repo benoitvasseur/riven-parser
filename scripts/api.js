@@ -332,6 +332,32 @@ async function createAuction(auctionData) {
   }
 }
 
+/**
+ * Récupère les enchères d'un profil
+ * @param {string} userId - ID de l'utilisateur
+ * @returns {Promise<Array>} Liste des enchères
+ */
+async function getProfileAuctions(userId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/profile/${userId}/auctions`, {
+      method: 'GET',
+      headers: {
+        'Language': 'en'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur API: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.payload.auctions || [];
+  } catch (error) {
+    console.error('Erreur lors de la récupération des enchères du profil:', error);
+    return [];
+  }
+}
+
 // Exporter les fonctions pour utilisation dans d'autres scripts
 window.WarframeAPI = {
   signIn,
@@ -343,5 +369,6 @@ window.WarframeAPI = {
   getRivenItems,
   getRivenAttributes,
   searchAuctions,
-  createAuction
+  createAuction,
+  getProfileAuctions
 };

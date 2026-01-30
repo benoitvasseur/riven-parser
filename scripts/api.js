@@ -314,6 +314,24 @@ async function searchAuctions(params) {
   }
 }
 
+/**
+ * Crée une enchère pour un Riven
+ * @param {Object} auctionData - Données de l'enchère
+ * @returns {Promise<Object>} Résultat de la création
+ */
+async function createAuction(auctionData) {
+  try {
+    const response = await authenticatedRequest('/auctions/create', {
+      method: 'POST',
+      body: JSON.stringify(auctionData)
+    });
+    return { success: true, data: response.payload };
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'enchère:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Exporter les fonctions pour utilisation dans d'autres scripts
 window.WarframeAPI = {
   signIn,
@@ -324,5 +342,6 @@ window.WarframeAPI = {
   getUserInfo,
   getRivenItems,
   getRivenAttributes,
-  searchAuctions
+  searchAuctions,
+  createAuction
 };

@@ -416,6 +416,20 @@ function createRivenFormElement(data, isSaleMode = false) {
   if (isSaleMode) form.classList.add('sale-mode');
   form.onsubmit = (e) => e.preventDefault();
 
+  // Riven Name Field (Sale Mode Only) - Added first or before Weapon
+  if (isSaleMode) {
+      const nameGroup = createFormGroup('Riven Name');
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'form-input';
+      // Try to get name from parsed data if available, otherwise empty
+      nameInput.value = data.name || ''; 
+      nameInput.name = 'riven_name';
+      nameInput.placeholder = 'e.g. Crita-sata';
+      nameGroup.appendChild(nameInput);
+      form.appendChild(nameGroup);
+  }
+
   // Weapon Field
   const weaponGroup = createFormGroup('Weapon');
   const weaponSelect = document.createElement('select');
@@ -474,6 +488,7 @@ function createRivenFormElement(data, isSaleMode = false) {
   const mrInput = document.createElement('input');
   mrInput.type = 'number';
   mrInput.className = 'form-input';
+  mrInput.name = 'mastery_rank';
   mrInput.value = data.mastery || '';
   mrGroup.appendChild(mrInput);
   form.appendChild(mrGroup);
@@ -562,6 +577,18 @@ function createRivenFormElement(data, isSaleMode = false) {
   
   form.appendChild(rollsGroup);
 
+  // Price (Sale Mode Only)
+  if (isSaleMode) {
+      const priceGroup = createFormGroup('Buyout Price (Platinum)');
+      const priceInput = document.createElement('input');
+      priceInput.type = 'number';
+      priceInput.className = 'form-input';
+      priceInput.min = '1';
+      priceInput.name = 'buyout_price';
+      priceGroup.appendChild(priceInput);
+      form.appendChild(priceGroup);
+  }
+
   // Action Button
   const actionBtn = document.createElement('button');
   actionBtn.type = 'button';
@@ -574,18 +601,56 @@ function createRivenFormElement(data, isSaleMode = false) {
     actionBtn.textContent = 'Create Sale';
     actionBtn.onclick = () => {
       const currentData = getFormDataFromDOM(form);
-      if (validateFormData(currentData)) {
-        // Add Polarity check
-        const polarityVal = form.querySelector('input[name="polarity"]').value;
-        if (!polarityVal) {
-          alert('Please select a polarity.');
-          return;
-        }
-        currentData.polarity = polarityVal;
+      if (validateFormData(currentData, true)) {
         
-        console.log('Creating sale with data:', currentData);
-        // API call will be implemented later
-        alert('Ready to create sale! (API pending)\nPolarity: ' + polarityVal);
+        const weaponUrlName = findWeaponUrlName(currentData.weaponName);
+        
+        // Construct API Payload
+        const payload = {
+            note: '',
+            starting_price: currentData.price,
+            buyout_price: currentData.price, // Using same value as requested
+            minimal_reputation: 0,
+            private: false,
+            item: {
+                type: 'riven',
+                attributes: currentData.stats.map(s => ({
+                    positive: s.type === 'positive',
+                    value: s.type === 'negative' ? -s.value : s.value,
+                    url_name: s.matchedAttribute.url_name
+                })),
+                name: currentData.rivenName,
+                mastery_level: currentData.mastery,
+                re_rolls: currentData.rolls,
+                weapon_url_name: weaponUrlName,
+                polarity: currentData.polarity,
+                mod_rank: 0 // Always 0 as requested
+            }
+        };
+
+        console.log('Creating auction with payload:', payload);
+
+        if (window.WarframeAPI && window.WarframeAPI.createAuction) {
+            actionBtn.disabled = true;
+            actionBtn.textContent = 'Creating...';
+            
+            window.WarframeAPI.createAuction(payload).then(result => {
+                actionBtn.disabled = false;
+                actionBtn.textContent = 'Create Sale';
+                
+                if (result.success) {
+                    showResultModal(true, 'Auction created successfully!', () => {
+                        // Close all modals (including the form)
+                        document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+                    });
+                } else {
+                    showResultModal(false, 'Failed to create auction: ' + (result.error || 'Unknown error'));
+                    // Keep form open
+                }
+            });
+        } else {
+            alert('API module not loaded.');
+        }
       }
     };
   } else {
@@ -611,7 +676,10 @@ function getFormDataFromDOM(formElement) {
 
   const weaponSelect = form.querySelector('select:first-of-type'); 
   // Let's use the container scope
-  const weaponValue = form.querySelector('.form-group:nth-of-type(1) select').value;
+  // First group usually weapon, but in sale mode we might have Name first.
+  // Best to look for the select specifically inside a form-group
+  const weaponSelectInput = form.querySelector('select');
+  const weaponValue = weaponSelectInput ? weaponSelectInput.value : '';
   
   const stats = [];
   const attributeRows = form.querySelectorAll('.attribute-row');
@@ -631,16 +699,22 @@ function getFormDataFromDOM(formElement) {
     }
   });
 
-  // Mastery Rank logic (finding the input in the group labeled "Mastery Rank")
+  // Mastery Rank logic
   let mrValue = null;
-  const formGroups = form.querySelectorAll('.form-group');
-  formGroups.forEach(group => {
-    const label = group.querySelector('label');
-    if (label && label.textContent === 'Mastery Rank') {
-      const input = group.querySelector('input');
-      if (input) mrValue = input.value;
-    }
-  });
+  const mrInput = form.querySelector('input[name="mastery_rank"]');
+  if (mrInput) {
+      mrValue = parseInt(mrInput.value);
+  } else {
+      // Fallback to searching by label if name not set
+      const formGroups = form.querySelectorAll('.form-group');
+      formGroups.forEach(group => {
+        const label = group.querySelector('label');
+        if (label && label.textContent === 'Mastery Rank') {
+          const input = group.querySelector('input');
+          if (input) mrValue = parseInt(input.value);
+        }
+      });
+  }
 
   // Rolls
   let rollsValue = 0;
@@ -653,15 +727,31 @@ function getFormDataFromDOM(formElement) {
       rollsValue = unrolled ? 0 : 1;
   }
 
+  // Sale Mode Fields
+  let rivenName = '';
+  const nameInput = form.querySelector('input[name="riven_name"]');
+  if (nameInput) rivenName = nameInput.value;
+
+  let price = null;
+  const priceInput = form.querySelector('input[name="buyout_price"]');
+  if (priceInput) price = parseInt(priceInput.value);
+
+  let polarity = null;
+  const polarityInput = form.querySelector('input[name="polarity"]');
+  if (polarityInput) polarity = polarityInput.value;
+
   return {
     weaponName: weaponValue,
     stats: stats,
     mastery: mrValue,
-    rolls: rollsValue
+    rolls: rollsValue,
+    rivenName: rivenName,
+    price: price,
+    polarity: polarity
   };
 }
 
-function validateFormData(data) {
+function validateFormData(data, isSaleMode = false) {
     if (!data.weaponName) {
         alert('Please select a weapon.');
         return false;
@@ -670,6 +760,22 @@ function validateFormData(data) {
         alert('Please add at least one attribute.');
         return false;
     }
+    
+    if (isSaleMode) {
+        if (!data.rivenName || data.rivenName.trim() === '') {
+            alert('Please enter the Riven Name.');
+            return false;
+        }
+        if (!data.price || data.price <= 0) {
+            alert('Please enter a valid price.');
+            return false;
+        }
+        if (!data.polarity) {
+            alert('Please select a polarity.');
+            return false;
+        }
+    }
+    
     return true;
 }
 
@@ -1113,4 +1219,64 @@ function createAuctionCell(auction, originalPositiveAttrs, originalNegativeAttrs
   cell.appendChild(priceDiv);
 
   return cell;
+}
+
+/**
+ * Helper to find weapon url_name from knownWeapons
+ */
+function findWeaponUrlName(displayName) {
+    if (!displayName) return null;
+    const weapon = knownWeapons.find(w => {
+        const name = typeof w === 'string' ? w : w.item_name || w.url_name;
+        return name.toLowerCase() === displayName.toLowerCase();
+    });
+    if (!weapon) return displayName.toLowerCase().replace(/\s+/g, '_'); // Fallback
+    return typeof weapon === 'string' ? weapon : weapon.url_name;
+}
+
+/**
+ * Show result modal
+ */
+function showResultModal(success, message, callback) {
+  // Remove existing modals
+  const existing = document.querySelectorAll('.modal-overlay');
+  existing.forEach(el => el.remove());
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.style.zIndex = '3000'; // Higher than form modal if it exists
+  
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+  content.style.maxWidth = '400px';
+  content.style.textAlign = 'center';
+  
+  const icon = document.createElement('div');
+  icon.style.fontSize = '48px';
+  icon.style.marginBottom = '16px';
+  icon.textContent = success ? '✅' : '❌';
+  content.appendChild(icon);
+  
+  const title = document.createElement('h3');
+  title.textContent = success ? 'Success!' : 'Error';
+  content.appendChild(title);
+  
+  const msg = document.createElement('p');
+  msg.textContent = message;
+  msg.style.marginBottom = '24px';
+  content.appendChild(msg);
+  
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-block';
+  btn.style.backgroundColor = success ? '#10b981' : '#ef4444';
+  btn.style.color = 'white';
+  btn.textContent = 'Close';
+  btn.onclick = () => {
+      overlay.remove();
+      if (callback) callback();
+  };
+  content.appendChild(btn);
+  
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
 }

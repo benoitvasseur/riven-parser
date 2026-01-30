@@ -745,8 +745,12 @@ function renderSimilarRivens(results, originalData) {
   similarContainer.appendChild(title);
 
   // Original Riven Attributes (for reference)
-  const originalAttrs = originalData.stats
-    .filter(s => s.matchedAttribute)
+  const originalPositiveAttrs = originalData.stats
+    .filter(s => s.type === 'positive' && s.matchedAttribute)
+    .map(s => s.matchedAttribute.url_name);
+
+  const originalNegativeAttrs = originalData.stats
+    .filter(s => s.type === 'negative' && s.matchedAttribute)
     .map(s => s.matchedAttribute.url_name);
 
   // Render Results
@@ -774,7 +778,7 @@ function renderSimilarRivens(results, originalData) {
       
       // Limit to top 5 results per query to avoid clutter
       res.auctions.slice(0, 5).forEach(auction => {
-        list.appendChild(createAuctionCell(auction, originalAttrs));
+        list.appendChild(createAuctionCell(auction, originalPositiveAttrs, originalNegativeAttrs));
       });
       
       if (res.auctions.length > 5) {
@@ -792,7 +796,7 @@ function renderSimilarRivens(results, originalData) {
   });
 }
 
-function createAuctionCell(auction, originalAttrs) {
+function createAuctionCell(auction, originalPositiveAttrs, originalNegativeAttrs) {
   const cell = document.createElement('div');
   cell.className = 'auction-cell';
   cell.style.border = '1px solid #eee';
@@ -829,12 +833,24 @@ function createAuctionCell(auction, originalAttrs) {
       tag.style.padding = '2px 6px';
       tag.style.borderRadius = '4px';
       
-      // Check if common with original
-      const isCommon = originalAttrs.includes(attr.url_name);
-      if (isCommon) {
+      // Check for match
+      const isNegative = attr.value < 0;
+
+      let matchType = 'none';
+      if (!isNegative && originalPositiveAttrs.includes(attr.url_name)) {
+        matchType = 'positive';
+      } else if (isNegative && originalNegativeAttrs.includes(attr.url_name)) {
+        matchType = 'negative';
+      }
+
+      if (matchType === 'positive') {
         tag.style.background = '#d1fae5'; // Green-ish
         tag.style.color = '#065f46';
         tag.style.border = '1px solid #a7f3d0';
+      } else if (matchType === 'negative') {
+        tag.style.background = '#fee2e2'; // Red-ish
+        tag.style.color = '#991b1b';
+        tag.style.border = '1px solid #fecaca';
       } else {
         tag.style.background = '#f3f4f6'; // Grey
         tag.style.color = '#4b5563';

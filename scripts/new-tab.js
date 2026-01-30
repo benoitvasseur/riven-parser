@@ -682,27 +682,69 @@ function renderSimilarRivens(results, originalData) {
 
   // Render Results
   results.forEach(res => {
-    const section = document.createElement('div');
-    section.style.marginBottom = '24px';
-    
-    const sectionTitle = document.createElement('h4');
-    sectionTitle.textContent = `${res.query._label} (${res.auctions.length} results)`;
-    sectionTitle.style.color = '#667eea';
-    sectionTitle.style.marginBottom = '8px';
-    section.appendChild(sectionTitle);
+    let sectionTitle = similarContainer.querySelector(`h4[data-label="${res.query._label}"]`);
+    let section;
+    let list;
 
-    if (res.auctions.length === 0) {
-      const noRes = document.createElement('div');
-      noRes.textContent = 'No auctions found.';
-      noRes.style.color = '#999';
-      noRes.style.fontStyle = 'italic';
-      section.appendChild(noRes);
-    } else {
-      const list = document.createElement('div');
-      list.style.display = 'flex';
-      list.style.flexDirection = 'column';
-      list.style.gap = '8px';
+    if (sectionTitle) {
+      // Update existing section
+      section = sectionTitle.parentElement;
+      const currentCount = parseInt(sectionTitle.getAttribute('data-count') || '0');
+      const newCount = currentCount + res.auctions.length;
       
+      sectionTitle.setAttribute('data-count', newCount);
+      sectionTitle.textContent = `${res.query._label} (${newCount} results)`;
+      
+      list = section.querySelector('.auction-list');
+      
+      // If we have results but currently showing "No auctions found", clean it up
+      if (res.auctions.length > 0) {
+        const noRes = section.querySelector('.no-results');
+        if (noRes) {
+          noRes.remove();
+        }
+        if (!list) {
+          list = document.createElement('div');
+          list.className = 'auction-list';
+          list.style.display = 'flex';
+          list.style.flexDirection = 'column';
+          list.style.gap = '8px';
+          section.appendChild(list);
+        }
+      }
+    } else {
+      // Create new section
+      section = document.createElement('div');
+      section.style.marginBottom = '24px';
+      
+      sectionTitle = document.createElement('h4');
+      sectionTitle.setAttribute('data-label', res.query._label);
+      sectionTitle.setAttribute('data-count', res.auctions.length);
+      sectionTitle.textContent = `${res.query._label} (${res.auctions.length} results)`;
+      sectionTitle.style.color = '#667eea';
+      sectionTitle.style.marginBottom = '8px';
+      section.appendChild(sectionTitle);
+
+      if (res.auctions.length > 0) {
+        list = document.createElement('div');
+        list.className = 'auction-list';
+        list.style.display = 'flex';
+        list.style.flexDirection = 'column';
+        list.style.gap = '8px';
+        section.appendChild(list);
+      } else {
+        const noRes = document.createElement('div');
+        noRes.className = 'no-results';
+        noRes.textContent = 'No auctions found.';
+        noRes.style.color = '#999';
+        noRes.style.fontStyle = 'italic';
+        section.appendChild(noRes);
+      }
+      similarContainer.appendChild(section);
+    }
+
+    // Append items
+    if (list && res.auctions.length > 0) {
       // Limit to top 5 results per query to avoid clutter
       res.auctions.slice(0, 5).forEach(auction => {
         list.appendChild(createAuctionCell(auction, originalPositiveAttrs, originalNegativeAttrs, res.query));
@@ -716,10 +758,7 @@ function renderSimilarRivens(results, originalData) {
         more.style.textAlign = 'center';
         list.appendChild(more);
       }
-
-      section.appendChild(list);
     }
-    similarContainer.appendChild(section);
   });
 }
 

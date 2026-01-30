@@ -13,7 +13,6 @@ export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
   const rivenData = {
     weaponName: null,
     stats: [],
-    polarity: null,
     mastery: null,
     rolls: null,
     rawText: text
@@ -47,9 +46,6 @@ export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
     if (rivenData.mastery === null) rivenData.mastery = footerData.mastery;
     if (rivenData.rolls === null) rivenData.rolls = footerData.rolls;
   }
-  
-  // Extract polarity
-  rivenData.polarity = extractPolarity(text);
   
   return rivenData;
 }
@@ -331,32 +327,6 @@ function extractFooterData(lines) {
 }
 
 /**
- * Extracts polarity
- * @param {string} text - Raw text
- * @returns {string|null} Polarity name
- */
-function extractPolarity(text) {
-  // Common Warframe polarities
-  const polarities = [
-    'Madurai',  // V shape
-    'Vazarin',  // D shape
-    'Naramon',  // Dash -
-    'Zenurik',  // equal =
-    'Unairu',   // R shape
-    'Penjaga',  // Y shape
-    'Umbra'     // Ω shape
-  ];
-  
-  for (const polarity of polarities) {
-    if (text.includes(polarity)) {
-      return polarity;
-    }
-  }
-  
-  return null;
-}
-
-/**
  * Validates parsed Riven data
  * @param {Object} rivenData - Parsed Riven data
  * @returns {Object} Validation result with errors
@@ -408,10 +378,6 @@ export function formatRivenData(rivenData) {
   
   if (rivenData.rolls !== null) {
     output += `Rolls: ${rivenData.rolls}\n`;
-  }
-  
-  if (rivenData.polarity) {
-    output += `Polarity: ${rivenData.polarity}\n`;
   }
   
   return output;

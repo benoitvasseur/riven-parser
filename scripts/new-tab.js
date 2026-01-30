@@ -1,5 +1,6 @@
 // Module for "New" tab
 import { parseRivenData, validateRivenData, formatRivenData } from './riven-parser.js';
+import { generateSimilarRivenQueries } from './search-queries.js';
 
 // Tesseract worker instance
 let tesseractWorker = null;
@@ -8,7 +9,7 @@ let knownWeapons = [];
 let knownAttributes = [];
 
 const KNOWN_POLARITIES = [
-  'Madurai', 'Vazarin', 'Naramon', 'Zenurik', 'Unairu', 'Penjaga', 'Umbra'
+  'Madurai', 'Vazarin', 'Naramon'
 ];
 
 async function loadKnownWeapons() {
@@ -368,24 +369,6 @@ function renderRivenForm(data) {
   mrGroup.appendChild(mrInput);
   form.appendChild(mrGroup);
 
-  // Polarity
-  const polarityGroup = createFormGroup('Polarity');
-  const polaritySelect = document.createElement('select');
-  polaritySelect.className = 'form-input';
-  polaritySelect.innerHTML = '<option value="">Select Polarity...</option>';
-  
-  KNOWN_POLARITIES.forEach(polarity => {
-    const option = document.createElement('option');
-    option.value = polarity;
-    option.textContent = polarity;
-    if (data.polarity && data.polarity.toLowerCase() === polarity.toLowerCase()) {
-      option.selected = true;
-    }
-    polaritySelect.appendChild(option);
-  });
-  polarityGroup.appendChild(polaritySelect);
-  form.appendChild(polarityGroup);
-
   // Rolls (Unrolled Checkbox)
   const rollsGroup = document.createElement('div');
   rollsGroup.className = 'form-group';
@@ -467,7 +450,6 @@ function getFormDataFromDOM() {
   // Div(AttributesContainer)
   // Button(Add)
   // Group(Mastery)
-  // Group(Polarity)
   // Group(Rolls)
   
   // Let's use robust selectors if possible, or traverse childNodes carefully.
@@ -482,15 +464,11 @@ function getFormDataFromDOM() {
   // We can select all form-groups and check their label.
   const formGroups = form.querySelectorAll('.form-group');
   let mrValue = null;
-  let polarityValue = null;
   
   formGroups.forEach(group => {
     const label = group.querySelector('label');
     if (label && label.textContent === 'Mastery Rank') {
       mrValue = group.querySelector('input').value;
-    }
-    if (label && label.textContent === 'Polarity') {
-      polarityValue = group.querySelector('select').value;
     }
   });
 
@@ -502,7 +480,6 @@ function getFormDataFromDOM() {
     weaponName: weaponValue,
     stats: stats,
     mastery: mrValue,
-    polarity: polarityValue,
     rolls: unrolled ? 0 : 1 // 0 if unrolled, >0 otherwise
   };
 }
@@ -598,100 +575,11 @@ function addAttributeRow(container, statData = null) {
 // --- Similar Rivens Logic ---
 
 async function findSimilarRivens(data) {
-  const weapon = knownWeapons.find(w => 
-    (w.item_name && w.item_name.toLowerCase() === data.weaponName?.toLowerCase()) || 
-    (w.url_name && w.url_name === data.weaponName)
-  );
-
-  if (!weapon) {
-    console.warn('Weapon not found for search:', data.weaponName);
-    return;
-  }
-
-  const positiveStats = data.stats.filter(s => s.type === 'positive' && s.matchedAttribute);
-  const negativeStats = data.stats.filter(s => s.type === 'negative' && s.matchedAttribute);
+  const queries = generateSimilarRivenQueries(data, knownWeapons);
   
-  if (positiveStats.length === 0) {
+  if (queries.length === 0) {
     return;
   }
-
-  const baseQuery = {
-    weapon_url_name: weapon.url_name,
-    buyout_policy: 'direct',
-    sort_by: 'price_asc',
-    platform: 'pc',
-    polarity: 'any'
-  };
-
-  const queries = [];
-
-  // Call 1: Identical
-  const positivesStr = positiveStats.map(s => s.matchedAttribute.url_name).join(',');
-
-  // If there are no negative attributes, query param should not be added
-  const negativesStr = negativeStats.length > 0 
-    ? negativeStats.map(s => s.matchedAttribute.url_name).join(',') 
-    : undefined;
-
-  queries.push({
-    ...baseQuery,
-    positive_stats: positivesStr,
-    ...(negativesStr ? { negative_stats: negativesStr } : {}),
-    _label: 'Similar',
-  });
-
-  // Determine priority rules
-  const potentialRules = [];
-
-  // Rule 1: if there is a negative attribute search without it
-  if (negativeStats.length > 0) {
-    potentialRules.push({
-      ...baseQuery,
-      positive_stats: positivesStr,
-      _label: 'Similar without negative attribute',
-    });
-  }
-
-  // Rule 2: If there are 3 positive attributes, search without the last one
-  if (positiveStats.length === 3) {
-    const subset = positiveStats.slice(0, 2).map(s => s.matchedAttribute.url_name).join(',');
-    potentialRules.push({
-      ...baseQuery,
-      positive_stats: subset,
-      ...(negativesStr ? { negative_stats: negativesStr } : {}),
-      _label: 'Similar without last attribute',
-    });
-  }
-
-  // Rule 3: Search without the first positive attribute
-  if (positiveStats.length > 1) {
-    const subset = positiveStats.slice(1).map(s => s.matchedAttribute.url_name).join(',');
-    potentialRules.push({
-      ...baseQuery,
-      positive_stats: subset,
-      ...(negativesStr ? { negative_stats: negativesStr } : {}),
-      _label: 'Similar without first attribute',
-    });
-  }
-
-  // Rule 4: Search without the last positive attribute
-  if (positiveStats.length > 1) {
-    const subset = positiveStats.slice(0, positiveStats.length - 1).map(s => s.matchedAttribute.url_name).join(',');
-    // Check duplication with Rule 2
-    const isDuplicate = potentialRules.some(q => q.positive_stats === subset && q.negative_stats === negativesStr);
-    if (!isDuplicate) {
-        potentialRules.push({
-            ...baseQuery,
-            positive_stats: subset,
-            ...(negativesStr ? { negative_stats: negativesStr } : {}),
-            _label: 'Similar without last attribute',
-        });
-    }
-  }
-
-  // Select first 2 applicable rules
-  const selectedRules = potentialRules.slice(0, 2);
-  queries.push(...selectedRules);
 
   renderSimilarRivensLoading();
 

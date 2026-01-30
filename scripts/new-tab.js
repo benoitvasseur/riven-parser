@@ -756,7 +756,9 @@ function validateFormData(data, isSaleMode = false) {
         alert('Please select a weapon.');
         return false;
     }
-    if (data.stats.length === 0) {
+    
+    // If searching for Unrolled (rolls === 0), attributes are optional
+    if (data.rolls !== 0 && data.stats.length === 0) {
         alert('Please add at least one attribute.');
         return false;
     }

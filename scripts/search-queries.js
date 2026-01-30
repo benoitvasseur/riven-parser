@@ -21,6 +21,20 @@ export function generateSimilarRivenQueries(data, knownWeapons) {
     return [];
   }
 
+  // Special case for Unrolled Rivens (rolls = 0)
+  // If user selected "unrolled", we ignore attributes and search for unrolled rivens only
+  if (data.rolls === 0) {
+    return [{
+      weapon_url_name: weapon.url_name,
+      buyout_policy: 'direct',
+      sort_by: 'price_asc',
+      platform: 'pc',
+      polarity: 'any',
+      re_rolls_max: 0,
+      _label: 'Unrolled'
+    }];
+  }
+
   const positiveStats = data.stats.filter(s => s.type === 'positive' && s.matchedAttribute);
   const negativeStats = data.stats.filter(s => s.type === 'negative' && s.matchedAttribute);
   

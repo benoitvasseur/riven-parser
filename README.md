@@ -14,7 +14,7 @@ Chrome extension with a sidepanel to facilitate interaction with the Warframe Ma
 ## 📁 Project Structure
 
 ```
-riven-market/
+riven-parser/
 ├── manifest.json # Extension Configuration
 ├── background.js # Service worker (background script)
 ├── sidepanel.html # Sidepanel Interface

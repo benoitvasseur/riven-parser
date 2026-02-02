@@ -1,6 +1,153 @@
 // Module for parsing Riven mod data from OCR text
 
 /**
+ * @param {string} text 
+ */
+export function getPrefix(text) {
+  switch (text) {
+    case 'ammo_maximum':
+      return 'Ampi';
+    case 'damage_vs_corpus':
+      return 'Manti';
+    case 'damage_vs_grineer':
+      return 'Argi';
+    case 'damage_vs_infested':
+      return 'Vexi';
+    case 'critical_chance':
+      return 'Crita';
+    case 'critical_damage':
+      return 'Acri';
+    case 'base_damage_/_melee_damage':
+      return 'Pleci';
+    case 'critical_chance_on_slide_attack':
+      return 'Visi';
+    case 'combo_duration':
+      return 'Tempi';
+    case 'electric_damage':
+      return 'Vexi';
+    case 'cold_damage':
+      return 'Zeti';
+    case 'heat_damage':
+      return 'Igni';
+    case 'finisher_damage':
+      return 'Exi';
+    case 'fire_rate_/_attack_speed':
+      return 'Croni';
+    case 'projectile_speed':
+      return 'Conci';
+    case 'channeling_damage':
+      return 'Para';
+    case 'channeling_efficiency':
+      return 'Forti';
+    case 'impact_damage':
+      return 'Magna';
+    case 'magazine_capacity':
+      return 'Arma';
+    case 'multishot':
+      return 'Sati';
+    case 'toxin_damage':
+      return 'Toxi';
+    case 'punch_through':
+      return 'Lexi';
+    case 'puncture_damage':
+      return 'Insi';
+    case 'reload_speed':
+      return 'Feva';
+    case 'range':
+      return 'Locti';
+    case 'slash_damage':
+      return 'Sci';
+    case 'status_chance':
+      return 'Hexa';
+    case 'status_duration':
+      return 'Deci';
+    case 'recoil':
+      return 'Zeti';
+    case 'zoom':
+      return 'Hera';
+    case 'chance_to_gain_extra_combo_count':
+      return 'Laci';
+    case 'chance_to_gain_combo_count':
+      return 'Nus';
+    default:
+      return null;
+  }
+}
+
+/**
+
+ * @param {string} text 
+ */
+export function getSuffix(text) {
+  switch (text) {
+    case 'ammo_maximum':
+      return 'Bin';
+    case 'damage_vs_corpus':
+      return 'Tron';
+    case 'damage_vs_grineer':
+      return 'Con';
+    case 'damage_vs_infested':
+      return 'Ada';
+    case 'cold_damage':
+      return 'Do';
+    case 'channeling_damage':
+      return 'Um';
+    case 'channeling_efficiency':
+      return 'Us';
+    case 'combo_duration':
+      return 'Nem';
+    case 'critical_chance':
+      return 'Cron';
+    case 'critical_chance_on_slide_attack':
+      return 'Nent';
+    case 'critical_damage':
+      return 'Tis';
+    case 'base_damage_/_melee_damage':
+      return 'Ata';
+    case 'electric_damage':
+      return 'Tio';
+    case 'heat_damage':
+      return 'Pha';
+    case 'finisher_damage':
+      return 'Cta';
+    case 'fire_rate_/_attack_speed':
+      return 'Dra';
+    case 'projectile_speed':
+      return 'Nak';
+    case 'impact_damage':
+      return 'Ton';
+    case 'magazine_capacity':
+      return 'Tin';
+    case 'multishot':
+      return 'Can';
+    case 'toxin_damage':
+      return 'Tox';
+    case 'punch_through':
+      return 'Nok';
+    case 'puncture_damage':
+      return 'Cak';
+    case 'reload_speed':
+      return 'Tak';
+    case 'range':
+      return 'Tor';
+    case 'slash_damage':
+      return 'Sus';
+    case 'status_chance':
+      return 'Dex';
+    case 'status_duration':
+      return 'Des';
+    case 'recoil':
+      return 'Mag';
+    case 'zoom':
+      return 'Lis';
+    case 'chance_to_gain_extra_combo_count':
+      return 'Nus';
+    default:
+      return null;
+  }
+}
+
+/**
  * Parses Riven mod data from OCR text
  * @param {string} text - Raw OCR text
  * @param {Array} knownWeapons - Optional list of valid weapon names to fuzzy match against

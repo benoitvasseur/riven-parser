@@ -1,4 +1,3 @@
-- List user auctions
-- Handle unrolled differently
 - Possibility to update an existing auction
 - Try to handle riven name better
+- OAuth 2.0 PKCE Authentication

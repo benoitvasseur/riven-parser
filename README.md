@@ -1,162 +1,131 @@
-# Riven reader - Extension Chrome
+# Riven Reader - Chrome Extension
 
-Extension Chrome avec sidepanel pour faciliter les interactions avec Warframe Market via l'API publique.
+Chrome extension with a sidepanel to facilitate interaction with the Warframe Market via the public API.
 
 ## 🚀 Installation
 
-### Mode développeur
+### Developer Mode
 
-1. Ouvrez Chrome et allez à `chrome://extensions/`
-2. Activez le "Mode développeur" en haut à droite
-3. Cliquez sur "Charger l'extension non empaquetée"
-4. Sélectionnez le dossier de ce projet
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable "Developer Mode" in the top right corner
+3. Click "Load unpacked extension"
+4. Select the folder for this project
 
-## 📁 Structure du projet
+## 📁 Project Structure
 
 ```
 riven-market/
-├── manifest.json          # Configuration de l'extension
-├── background.js          # Service worker (background script)
-├── sidepanel.html        # Interface du sidepanel
+├── manifest.json # Extension Configuration
+├── background.js # Service worker (background script)
+├── sidepanel.html # Sidepanel Interface
 ├── styles/
-│   └── sidepanel.css     # Styles CSS
+│ └── sidepanel.css # CSS Styles
 ├── scripts/
-│   ├── api.js            # Module API Warframe Market
-│   └── sidepanel.js      # Logique JavaScript du sidepanel
-└── icons/                # Icônes de l'extension (à ajouter)
+│ ├── api.js # Warframe Market API Module
+│ ├── riven-parser.js # Riven parser
+│ ├── new-tab.js # New tab JavaScript logic
+│ ├── rivens-tab.js # Rivens tab JavaScript logic
+│ ├── search-queries.js # Search queries JavaScript logic
+│ ├── auction-cell.js # Auction cell JavaScript logic
+│ ├── modules-loader.js # Modules loader
+│ └── sidepanel.js # Sidepanel JavaScript logic
+└── icons/ # Extension icons (to be added)
 ```
 
-## 🎨 Fonctionnalités
+## 🎨 Features
 
-- **Authentification OAuth 2.0 PKCE** : Connexion sécurisée via Warframe Market
-- **Gestion de session** : Tokens d'accès et de rafraîchissement automatiques
-- **Device ID unique** : Génération automatique et persistance d'un ID unique
-- **Interface moderne** : Design élégant avec gradient et animations
-- **Gestion utilisateur** : Affichage des informations de profil et déconnexion
-- **Auto-refresh des tokens** : Rafraîchissement automatique quand le token expire
-- **📷 Upload d'images** : Glissez-déposez ou sélectionnez des captures d'écran de Riven mods
-- **🔍 OCR automatique** : Reconnaissance de texte via Tesseract.js avec suivi de progression
-- **📊 Analyse intelligente** : Extraction automatique des données Riven (arme, stats, MR, rolls, polarité)
-- **✅ Validation** : Vérification de la cohérence des données extraites
+- **OAuth 2.0 PKCE Authentication**: Secure login via Warframe Market
+- ​​**Session Management**: Automatic login and refresh tokens
+- **Unique Device ID**: Automatic generation and persistence of a unique ID
+- **Modern Interface**: Elegant design with gradients and animations
+- **User Management**: Display of profile information and logout
+- **Auto-refresh Tokens**: Automatic refresh when the token expires
+- **📷 Image Upload**: Drag and drop or select screenshots from Riven mods
+- **🔍 Automatic OCR**: Text recognition via Tesseract.js with progress tracking
+- **📊 Intelligent Analysis** : Automatic extraction of Riven data (weapon, stats, MR, rolls, polarity)
+- **✅ Validation**: Verification of the consistency of the extracted data
 
-## 📝 Utilisation
+## 📝 Usage
 
-### Première connexion
+### First connection
 
-1. Cliquez sur l'icône de l'extension dans Chrome
-2. Le sidepanel s'ouvre avec un bouton de connexion OAuth
-3. Cliquez sur "Se connecter avec Warframe Market"
-4. Une nouvelle fenêtre s'ouvre pour vous connecter sur Warframe Market
-5. Autorisez l'accès à l'application
-6. Vous êtes automatiquement redirigé et connecté
+1. Click on the extension icon in Chrome
+2. The sidepanel opens with a login form
+3. Enter your email and password
+4. Click on "Login"
+5. You are automatically logged in
 
-### Après connexion
+### After login
 
-- Vos informations sont affichées en haut de la page
-- Vous restez connecté même après fermeture du navigateur
-- Le token est automatiquement rafraîchi quand il expire
-- Utilisez le bouton "Déconnexion" pour vous déconnecter
+- Your information is displayed at the top of the page
+- You remain logged in even after closing the browser
+- The token is automatically refreshed when it expires
+- Use the "Logout" button to log out
 
-## 🔐 API Warframe Market
+## 🔐 Warframe Market API
 
-L'extension utilise l'API publique v2 de Warframe Market avec OAuth 2.0 PKCE :
+The extension uses the Warframe Market public API v1:
 
-- **Base URL** : `https://api.warframe.market/v2/`
-- **Authorize URL** : `https://warframe.market/auth/authorize`
-- **Token Endpoint** : `/oauth/token`
-- **Client ID** : `64243a5d316686c642c2a56a`
-- **Scopes** : `orders inventory`
+- **Base URL**: `https://api.warframe.market/v1/`
 
-### Fonctionnalités API disponibles
+### Available API Features
 
-Le module `api.js` fournit les fonctions suivantes :
+The `api.js` module provides the following functions:
 
-- `signIn()` : Lancer le flux OAuth 2.0 (ouvre une fenêtre navigateur)
-- `signOut()` : Déconnexion et suppression des tokens
-- `isAuthenticated()` : Vérification de l'état de connexion et validité du token
-- `getAuthToken()` : Récupération du token (avec auto-refresh si nécessaire)
-- `refreshAccessToken()` : Rafraîchir manuellement le token d'accès
-- `getUserInfo()` : Récupérer les informations utilisateur sauvegardées
-- `authenticatedRequest(endpoint, options)` : Requête API authentifiée
+- `signIn()`: Start the OAuth 2.0 flow (opens a browser window)
+- `signOut()`: Log out and delete tokens
+- `isAuthenticated()`: Check the connection status and token validity
+- `getAuthToken()`: Retrieve the token (with auto-refresh if necessary)
+- `refreshAccessToken()`: Manually Refresh the Access Token
+- `getUserInfo()`: Retrieve saved user information
+- `authenticatedRequest(endpoint, options)`: Authenticated API request
 
-## 🔧 Développement
+## 🔧 Development
 
-Pour modifier l'extension :
+To modify the extension:
 
-1. Éditez les fichiers sources
-2. Retournez à `chrome://extensions/`
-3. Cliquez sur l'icône de rechargement de l'extension
+1. Edit the source files
+2. Go back to `chrome://extensions/`
+3. Click the extension refresh icon
 
-### Structure de données
+### Data Structure
 
-Les données suivantes sont sauvegardées dans `chrome.storage.local` :
+The following data is stored in `chrome.storage.local`:
 
-- `deviceId` : ID unique de l'appareil (format: `d-{16 chars}`)
-- `accessToken` : Token d'accès JWT
-- `refreshToken` : Token de rafraîchissement
-- `expiresAt` : Timestamp d'expiration du token (Unix timestamp)
-- `tokenType` : Type de token (généralement "Bearer")
-- `user` : Objet contenant les informations utilisateur
-- `isAuthenticated` : État de connexion (boolean)
-- `authDate` : Date de connexion (ISO string)
+- `deviceId`: Unique device ID (format: `d-{16 chars}`)
+- `accessToken`: JWT access token
+- `refreshToken`: Refresh token
+- `expiresAt`: Token expiration timestamp (Unix timestamp)
+- `tokenType`: Token type (usually "Bearer")
+- `user`: Object containing user information
+- `isAuthenticated`: Login status (boolean)
+- `authDate`: Login date (ISO string)
 
 ## 📋 Permissions
 
-- `sidePanel` : Permet d'utiliser l'API Sidepanel
-- `storage` : Permet de sauvegarder des données localement
-- `identity` : Permet d'utiliser le flux OAuth 2.0
-- `host_permissions` : Accès à l'API Warframe Market
-  - `https://api.warframe.market/*` (API)
-  - `https://warframe.market/*` (OAuth authorization)
+- `sidePanel`: Allows use of the Sidepanel API
+- `storage`: Allows saving data locally
+- `host_permissions`: Access to the Warframe Market API
+- `https://api.warframe.market/*` (API)
 
-## 🔍 OCR et Analyse de Riven
+## 🔍 Riven OCR and Analysis
 
-### Comment utiliser l'OCR
+### How to Use OCR
 
-1. **Capturez une image** : Prenez une capture d'écran de votre Riven mod dans Warframe
-2. **Uploadez l'image** : 
-   - Glissez-déposez l'image dans la zone de dépôt
-   - Ou cliquez pour sélectionner un fichier
-3. **Analyse automatique** : Tesseract.js analyse l'image en temps réel
-4. **Vérifiez les résultats** :
-   - Niveau de confiance affiché (%)
-   - Texte brut détecté
-   - Cliquez sur "Analyze Riven Data" pour extraire les informations structurées
+1. **Capture an Image**: Take a screenshot of your Riven mod in Warframe
+2. **Upload the Image**:
+- Drag and drop the image into the drop zone
+- Or click to select a file
+3. **Automatic Analysis**: Tesseract.js analyzes the image in real time
+4. **Check the Results**
 
-### Données extraites
+### Extracted Data
 
-Le parser Riven extrait automatiquement :
+The Riven parser automatically extracts:
 
-- **Nom de l'arme** : Ex: "Tonkor", "Rubico", "Acceltra"
-- **Stats** : 
-  - Positives (ex: +120.5% Critical Chance)
-  - Négatives (ex: -45.2% Fire Rate)
-- **Mastery Rank** : Niveau de maîtrise requis
-- **Rolls** : Nombre de fois que le Riven a été roulé
-- **Polarité** : Type de polarité (Madurai, Vazarin, etc.)
-
-### Test de l'OCR
-
-Un fichier de test est disponible : `test-ocr.html`
-
-Ouvrez-le dans votre navigateur pour tester l'OCR sans charger l'extension complète.
-
-### Technologies OCR
-
-- **Tesseract.js v5** : Moteur OCR en JavaScript
-- **WebAssembly** : Pour des performances optimales
-- **Worker réutilisable** : Un seul worker pour toutes les analyses
-
-Pour plus de détails, consultez `OCR_INTEGRATION.md`.
-
-## 🎯 Prochaines étapes
-
-- [x] ~~Ajouter l'OCR avec Tesseract.js~~
-- [x] ~~Parser les données Riven~~
-- [ ] Améliorer la précision OCR avec prétraitement d'image
-- [ ] Sauvegarder les Rivens analysés dans le storage
-- [ ] Implémenter la recherche de Rivens sur le marché
-- [ ] Afficher les offres du marché pour les Rivens similaires
-- [ ] Gérer les transactions
-- [ ] Ajouter des notifications pour les nouvelles offres
-- [ ] Implémenter le filtrage et le tri des résultats
+- **Weapon Name**: Ex: "Tonkor", "Rubico", "Acceltra"
+- **Stats**:
+  - Positive (e.g., +120.5% Critical Chance)
+  - Negative (e.g., -45.2% Fire Rate)
+- **Mastery**
+- **Rolls**"

@@ -34,7 +34,6 @@ riven-parser/
 
 ## 🎨 Features
 
-- **OAuth 2.0 PKCE Authentication**: Secure login via Warframe Market
 - ​​**Session Management**: Automatic login and refresh tokens
 - **Unique Device ID**: Automatic generation and persistence of a unique ID
 - **Modern Interface**: Elegant design with gradients and animations

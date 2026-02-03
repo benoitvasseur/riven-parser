@@ -148,6 +148,108 @@ export function getSuffix(text) {
 }
 
 /**
+ * Generates possible Riven names based on stats
+ * @param {Array} stats Array of { value, matchedAttribute: { url_name } }
+ * @returns {Object} { recommended: string, others: string[] }
+ */
+export function generateRivenNames(stats) {
+  // Filter positive attributes with valid url_name
+  const positiveStats = stats.filter(s => 
+    s.type === 'positive' && 
+    s.matchedAttribute && 
+    s.matchedAttribute.url_name
+  );
+
+  if (positiveStats.length < 2) {
+    return { recommended: '', others: [] };
+  }
+
+  // Sort by value descending for the "recommended" logic
+  const sortedByValue = [...positiveStats].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  
+  let recommended = '';
+  const others = new Set();
+
+  if (positiveStats.length === 2) {
+    // Rule: {Prefix}{Suffix} with Prefix = highest %
+    // sortedByValue[0] is highest
+    const prefix = getPrefix(sortedByValue[0].matchedAttribute.url_name);
+    const suffix = getSuffix(sortedByValue[1].matchedAttribute.url_name);
+    
+    if (prefix && suffix) {
+      recommended = capitalize(prefix + suffix.toLowerCase());
+    }
+
+    // Permutations (only 2 for 2 stats)
+    // 1. A-Prefix B-Suffix (Recommended)
+    // 2. B-Prefix A-Suffix
+    const p1 = getPrefix(positiveStats[0].matchedAttribute.url_name);
+    const s2 = getSuffix(positiveStats[1].matchedAttribute.url_name);
+    if (p1 && s2) others.add(capitalize(p1 + s2.toLowerCase()));
+
+    const p2 = getPrefix(positiveStats[1].matchedAttribute.url_name);
+    const s1 = getSuffix(positiveStats[0].matchedAttribute.url_name);
+    if (p2 && s1) others.add(capitalize(p2 + s1.toLowerCase()));
+
+  } else if (positiveStats.length >= 3) {
+    // Take top 3 if more than 3 (rare but possible in some contexts, strictly rivens have 2 or 3 positives)
+    // Rule: {Prefix1}-{Prefix2}{Suffix}
+    // Prefix1 = highest, Prefix2 = 2nd highest, Suffix = lowest (3rd)
+    const top3 = sortedByValue.slice(0, 3);
+    
+    const p1 = getPrefix(top3[0].matchedAttribute.url_name);
+    const p2 = getPrefix(top3[1].matchedAttribute.url_name);
+    const s3 = getSuffix(top3[2].matchedAttribute.url_name);
+
+    if (p1 && p2 && s3) {
+      recommended = capitalize(`${p1}-${p2}${s3.toLowerCase()}`);
+    }
+
+    // Permutations of 3 items: 3! = 6
+    // We need to generate all valid combinations of P-P-S
+    const perms = getPermutations(positiveStats.slice(0, 3));
+    perms.forEach(perm => {
+      const pp1 = getPrefix(perm[0].matchedAttribute.url_name);
+      const pp2 = getPrefix(perm[1].matchedAttribute.url_name);
+      const ss3 = getSuffix(perm[2].matchedAttribute.url_name);
+      
+      if (pp1 && pp2 && ss3) {
+        others.add(capitalize(`${pp1}-${pp2}${ss3.toLowerCase()}`));
+      }
+    });
+  }
+
+  // Remove recommended from others
+  if (recommended) {
+    others.delete(recommended);
+  }
+
+  return {
+    recommended,
+    others: Array.from(others)
+  };
+}
+
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function getPermutations(arr) {
+  if (arr.length <= 1) return [arr];
+  const result = [];
+  for (let i = 0; i < arr.length; i++) {
+    const current = arr[i];
+    const remaining = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    const remainingPerms = getPermutations(remaining);
+    for (const perm of remainingPerms) {
+      result.push([current, ...perm]);
+    }
+  }
+  return result;
+}
+
+/**
  * Parses Riven mod data from OCR text
  * @param {string} text - Raw OCR text
  * @param {Array} knownWeapons - Optional list of valid weapon names to fuzzy match against

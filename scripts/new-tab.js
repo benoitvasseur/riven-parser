@@ -1,6 +1,6 @@
 // Module for "New" tab
 import { createAuctionCell } from './auction-cell.js';
-import { parseRivenData, validateRivenData } from './riven-parser.js';
+import { parseRivenData, validateRivenData, generateRivenNames } from './riven-parser.js';
 import { generateSimilarRivenQueries } from './search-queries.js';
 
 // Tesseract worker instance
@@ -417,17 +417,62 @@ function createRivenFormElement(data, isSaleMode = false) {
   if (isSaleMode) form.classList.add('sale-mode');
   form.onsubmit = (e) => e.preventDefault();
 
+  // Helper to update suggestions
+  const updateSuggestions = () => {
+    // Only run this if we are in sale mode (where name field exists)
+    if (!isSaleMode) return;
+
+    // Small delay to ensure inputs are updated if triggered by input change
+    setTimeout(() => {
+      const formData = getFormDataFromDOM(form);
+      if (!formData || !formData.stats) return;
+
+      const suggestions = generateRivenNames(formData.stats);
+      const nameList = form.querySelector('#rivenNameList');
+      if (nameList) {
+        nameList.innerHTML = '';
+        
+        if (suggestions.recommended) {
+          const opt = document.createElement('option');
+          opt.value = suggestions.recommended;
+          nameList.appendChild(opt);
+        }
+
+        suggestions.others.forEach(name => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          nameList.appendChild(opt);
+        });
+      }
+    }, 50);
+  };
+
   // Riven Name Field (Sale Mode Only) - Added first or before Weapon
   if (isSaleMode) {
       const nameGroup = createFormGroup('Riven Name');
+      
       const nameInput = document.createElement('input');
       nameInput.type = 'text';
       nameInput.className = 'form-input';
+      nameInput.style.width = '100%';
       // Try to get name from parsed data if available, otherwise empty
-      nameInput.value = data.name || ''; 
+      // If we have stats, try to generate a name initially if none provided
+      let initialName = data.name || '';
+      if (!initialName && data.stats) {
+          const names = generateRivenNames(data.stats);
+          if (names.recommended) initialName = names.recommended;
+      }
+      nameInput.value = initialName;
       nameInput.name = 'riven_name';
       nameInput.placeholder = 'e.g. Crita-sata';
+      nameInput.setAttribute('list', 'rivenNameList');
+      nameInput.autocomplete = "off";
+      
+      const dataList = document.createElement('datalist');
+      dataList.id = 'rivenNameList';
+
       nameGroup.appendChild(nameInput);
+      nameGroup.appendChild(dataList);
       form.appendChild(nameGroup);
   }
 
@@ -461,6 +506,11 @@ function createRivenFormElement(data, isSaleMode = false) {
   const attributesContainer = document.createElement('div');
   // Use a unique ID or class if multiple forms exist, but for now we rely on DOM traversal or local var
   attributesContainer.className = 'attributes-container'; 
+  
+  // Add change listener to container for event delegation
+  attributesContainer.addEventListener('change', updateSuggestions);
+  attributesContainer.addEventListener('input', updateSuggestions); // For text input changes
+
   form.appendChild(attributesContainer);
 
   // Add parsed attributes (or empty rows if none)
@@ -474,6 +524,9 @@ function createRivenFormElement(data, isSaleMode = false) {
     addAttributeRow(attributesContainer);
   }
 
+  // Initial suggestions update
+  updateSuggestions();
+
   // Add Attribute Button
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
@@ -481,7 +534,10 @@ function createRivenFormElement(data, isSaleMode = false) {
   addBtn.textContent = '+ Add Attribute';
   addBtn.style.marginTop = '8px';
   addBtn.style.marginBottom = '16px';
-  addBtn.onclick = () => addAttributeRow(attributesContainer);
+  addBtn.onclick = () => {
+    addAttributeRow(attributesContainer);
+    updateSuggestions();
+  };
   form.appendChild(addBtn);
 
   // Mastery Rank
@@ -679,7 +735,16 @@ function getFormDataFromDOM(formElement) {
   // Let's use the container scope
   // First group usually weapon, but in sale mode we might have Name first.
   // Best to look for the select specifically inside a form-group
-  const weaponSelectInput = form.querySelector('select');
+  // A select inside a form-group that is NOT the attribute row select
+  // Attribute rows are inside attributes-container
+  const allSelects = Array.from(form.querySelectorAll('select'));
+  const weaponSelectInput = allSelects.find(s => 
+    s.closest('.form-group') && 
+    !s.closest('.attribute-row') && 
+    !s.closest('.polarity-selector') &&
+    s.id !== 'rivenNameSuggestions'
+  );
+  
   const weaponValue = weaponSelectInput ? weaponSelectInput.value : '';
   
   const stats = [];
@@ -688,7 +753,7 @@ function getFormDataFromDOM(formElement) {
     const valInput = row.querySelector('input[type="number"]');
     const attrSelect = row.querySelector('select');
     
-    if (valInput.value && attrSelect.value) {
+    if (valInput && attrSelect && valInput.value && attrSelect.value) {
       const value = parseFloat(valInput.value);
       stats.push({
         value: Math.abs(value),
@@ -851,6 +916,9 @@ function addAttributeRow(container, statData = null) {
   delBtn.onclick = () => {
     if (container.children.length > 0) {
       container.removeChild(row);
+      // Trigger update suggestions
+      const event = new Event('change', { bubbles: true });
+      container.dispatchEvent(event);
     }
   };
   row.appendChild(delBtn);

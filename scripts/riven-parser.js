@@ -18,9 +18,12 @@ export function getPrefix(text) {
     case 'critical_damage':
       return 'Acri';
     case 'base_damage_/_melee_damage':
-      return 'Pleci';
-    case 'critical_chance_on_slide_attack':
+    case 'base_damage':
+    case 'melee_damage':
+    case 'damage':
       return 'Visi';
+    case 'critical_chance_on_slide_attack':
+      return 'Pleci';
     case 'combo_duration':
       return 'Tempi';
     case 'electric_damage':
@@ -103,6 +106,9 @@ export function getSuffix(text) {
     case 'critical_damage':
       return 'Tis';
     case 'base_damage_/_melee_damage':
+    case 'base_damage':
+    case 'melee_damage':
+    case 'damage':
       return 'Ata';
     case 'electric_damage':
       return 'Tio';
@@ -217,6 +223,23 @@ export function generateRivenNames(stats) {
         others.add(capitalize(`${pp1}-${pp2}${ss3.toLowerCase()}`));
       }
     });
+
+    // Also add permutations of 2 items (P-S) using any pair from the 3 stats
+    // This covers cases where one stat might be ignored or the user prefers a 2-stat name
+    for (let i = 0; i < top3.length; i++) {
+        for (let j = 0; j < top3.length; j++) {
+            if (i === j) continue;
+            const stat1 = top3[i];
+            const stat2 = top3[j];
+            
+            const p = getPrefix(stat1.matchedAttribute.url_name);
+            const s = getSuffix(stat2.matchedAttribute.url_name);
+            
+            if (p && s) {
+                others.add(capitalize(p + s.toLowerCase()));
+            }
+        }
+    }
   }
 
   // Remove recommended from others

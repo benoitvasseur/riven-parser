@@ -125,6 +125,77 @@ function injectStyles() {
       height: 32px;
       display: block;
     }
+    .combobox-container {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      border: 1px solid #e5e7eb; /* Matches polarity border or typical input */
+      border-radius: 6px; /* Match form-input default usually */
+      background: white;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .combobox-container:focus-within {
+      border-color: #10b981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+    .combobox-input {
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      flex: 1;
+      border-radius: 6px 0 0 6px !important;
+      margin: 0 !important;
+      background: transparent !important;
+    }
+    .combobox-arrow {
+      padding: 0 12px;
+      cursor: pointer;
+      background: #f9fafb;
+      border: none;
+      border-left: 1px solid #e5e7eb;
+      color: #666;
+      border-radius: 0 6px 6px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .combobox-arrow:hover {
+        background: #e5e7eb;
+    }
+    .combobox-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-top: 4px;
+      z-index: 3000; /* High z-index to sit on top of modal content */
+      max-height: 200px;
+      overflow-y: auto;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+    .combobox-dropdown.show {
+        display: block;
+    }
+    .combobox-option {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #374151;
+    }
+    .combobox-option:hover {
+      background-color: #f3f4f6;
+      color: #111827;
+    }
+    .combobox-option.recommended {
+        font-weight: 600;
+        background-color: #ecfdf5;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -419,30 +490,57 @@ function createRivenFormElement(data, isSaleMode = false) {
 
   // Helper to update suggestions
   const updateSuggestions = () => {
-    // Only run this if we are in sale mode (where name field exists)
     if (!isSaleMode) return;
-
-    // Small delay to ensure inputs are updated if triggered by input change
+    
     setTimeout(() => {
       const formData = getFormDataFromDOM(form);
       if (!formData || !formData.stats) return;
 
       const suggestions = generateRivenNames(formData.stats);
-      const nameList = form.querySelector('#rivenNameList');
-      if (nameList) {
-        nameList.innerHTML = '';
-        
-        if (suggestions.recommended) {
-          const opt = document.createElement('option');
-          opt.value = suggestions.recommended;
-          nameList.appendChild(opt);
-        }
+      
+      const dropdown = form.querySelector('#rivenNameDropdown');
+      if (dropdown) {
+          dropdown.innerHTML = '';
+          let hasOptions = false;
 
-        suggestions.others.forEach(name => {
-          const opt = document.createElement('option');
-          opt.value = name;
-          nameList.appendChild(opt);
-        });
+          if (suggestions.recommended) {
+              const div = document.createElement('div');
+              div.className = 'combobox-option recommended';
+              div.textContent = suggestions.recommended + ' (Recommended)';
+              // Store pure value in data attribute
+              div.dataset.value = suggestions.recommended;
+              div.onclick = () => {
+                  const input = form.querySelector('input[name="riven_name"]');
+                  if (input) input.value = suggestions.recommended;
+                  dropdown.classList.remove('show');
+              };
+              dropdown.appendChild(div);
+              hasOptions = true;
+          }
+          
+          suggestions.others.forEach(name => {
+              const div = document.createElement('div');
+              div.className = 'combobox-option';
+              div.textContent = name;
+              div.dataset.value = name;
+              div.onclick = () => {
+                  const input = form.querySelector('input[name="riven_name"]');
+                  if (input) input.value = name;
+                  dropdown.classList.remove('show');
+              };
+              dropdown.appendChild(div);
+              hasOptions = true;
+          });
+          
+          if (!hasOptions) {
+             const div = document.createElement('div');
+             div.className = 'combobox-option';
+             div.style.color = '#9ca3af';
+             div.style.fontStyle = 'italic';
+             div.style.cursor = 'default';
+             div.textContent = 'No suggestions available';
+             dropdown.appendChild(div);
+          }
       }
     }, 50);
   };
@@ -451,12 +549,13 @@ function createRivenFormElement(data, isSaleMode = false) {
   if (isSaleMode) {
       const nameGroup = createFormGroup('Riven Name');
       
+      const comboContainer = document.createElement('div');
+      comboContainer.className = 'combobox-container';
+      
       const nameInput = document.createElement('input');
       nameInput.type = 'text';
-      nameInput.className = 'form-input';
-      nameInput.style.width = '100%';
+      nameInput.className = 'form-input combobox-input'; // Combined classes
       // Try to get name from parsed data if available, otherwise empty
-      // If we have stats, try to generate a name initially if none provided
       let initialName = data.name || '';
       if (!initialName && data.stats) {
           const names = generateRivenNames(data.stats);
@@ -465,15 +564,49 @@ function createRivenFormElement(data, isSaleMode = false) {
       nameInput.value = initialName;
       nameInput.name = 'riven_name';
       nameInput.placeholder = 'e.g. Crita-sata';
-      nameInput.setAttribute('list', 'rivenNameList');
       nameInput.autocomplete = "off";
-      
-      const dataList = document.createElement('datalist');
-      dataList.id = 'rivenNameList';
 
-      nameGroup.appendChild(nameInput);
-      nameGroup.appendChild(dataList);
+      const arrowBtn = document.createElement('button');
+      arrowBtn.type = 'button';
+      arrowBtn.className = 'combobox-arrow';
+      arrowBtn.innerHTML = '▼';
+      arrowBtn.onclick = (e) => {
+          e.stopPropagation(); // Prevent closing immediately
+          const dropdown = comboContainer.querySelector('.combobox-dropdown');
+          if (dropdown) {
+            // Toggle
+            const isShown = dropdown.classList.contains('show');
+            // Close all other dropdowns
+            document.querySelectorAll('.combobox-dropdown.show').forEach(d => d.classList.remove('show'));
+            
+            if (!isShown) dropdown.classList.add('show');
+          }
+      };
+
+      const dropdown = document.createElement('div');
+      dropdown.id = 'rivenNameDropdown';
+      dropdown.className = 'combobox-dropdown';
+      
+      comboContainer.appendChild(nameInput);
+      comboContainer.appendChild(arrowBtn);
+      comboContainer.appendChild(dropdown);
+      
+      nameGroup.appendChild(comboContainer);
       form.appendChild(nameGroup);
+
+      // Auto-cleanup listener for closing dropdown
+      setTimeout(() => {
+          const autoCleanupListener = (e) => {
+              if (!document.body.contains(form)) {
+                  document.removeEventListener('click', autoCleanupListener);
+                  return;
+              }
+              if (!comboContainer.contains(e.target)) {
+                  dropdown.classList.remove('show');
+              }
+          };
+          document.addEventListener('click', autoCleanupListener);
+      }, 0);
   }
 
   // Weapon Field

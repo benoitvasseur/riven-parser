@@ -698,20 +698,36 @@ function findBestAttributeMatch(rawName, knownAttributes) {
     }
     
     // 2. Inclusion
-    if (attrEffect.includes(normalizedRaw) || normalizedRaw.includes(attrEffect)) {
-      if (bestScoreType < 2) {
-        // Found first inclusion, upgrades previous Levenshtein matches
-        bestScoreType = 2;
-        bestMatch = attr;
-        bestDist = Math.abs(attrEffect.length - normalizedRaw.length);
-      } else if (bestScoreType === 2) {
-        // Already have an inclusion, check if this one is better (closer in length)
-        const diff = Math.abs(attrEffect.length - normalizedRaw.length);
-        if (diff < bestDist) {
+    const isIncluded = attrEffect.includes(normalizedRaw) || normalizedRaw.includes(attrEffect);
+    let isValidInclusion = false;
+
+    if (isIncluded) {
+      // Calculate overlap ratio to prevent short generic terms matching long specific terms
+      // e.g. "damage" vs "damage to grifesr" -> should fail inclusion and use Levenshtein to find "damage to grineer"
+      const minLen = Math.min(attrEffect.length, normalizedRaw.length);
+      const maxLen = Math.max(attrEffect.length, normalizedRaw.length);
+      const ratio = minLen / maxLen;
+      
+      // Only consider valid inclusion if it covers significant portion (> 60%)
+      if (ratio > 0.75) {
+        isValidInclusion = true;
+        if (bestScoreType < 2) {
+          // Found first inclusion, upgrades previous Levenshtein matches
+          bestScoreType = 2;
           bestMatch = attr;
-          bestDist = diff;
+          bestDist = Math.abs(attrEffect.length - normalizedRaw.length);
+        } else if (bestScoreType === 2) {
+          // Already have an inclusion, check if this one is better (closer in length)
+          const diff = Math.abs(attrEffect.length - normalizedRaw.length);
+          if (diff < bestDist) {
+            bestMatch = attr;
+            bestDist = diff;
+          }
         }
       }
+    }
+
+    if (isValidInclusion) {
       continue;
     }
     

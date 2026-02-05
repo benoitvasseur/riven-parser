@@ -1,4 +1,4 @@
-export function createAuctionCell(auction, originalPositiveAttrs, originalNegativeAttrs, query = null) {
+export function createAuctionCell(auction, originalPositiveAttrs, originalNegativeAttrs, query = null, options = {}) {
     const cell = document.createElement('div');
     cell.className = 'auction-cell';
     cell.style.border = '1px solid #eee';
@@ -82,16 +82,38 @@ export function createAuctionCell(auction, originalPositiveAttrs, originalNegati
   
     cell.appendChild(infoDiv);
   
+    // Right side container (Price + Button)
+    const rightDiv = document.createElement('div');
+    rightDiv.style.display = 'flex';
+    rightDiv.style.flexDirection = 'column';
+    rightDiv.style.alignItems = 'flex-end';
+    rightDiv.style.gap = '8px';
+    rightDiv.style.marginLeft = '16px';
+
     // Price
     const priceDiv = document.createElement('div');
     priceDiv.style.fontWeight = 'bold';
     priceDiv.style.fontSize = '16px';
     priceDiv.style.color = '#667eea';
-    priceDiv.style.marginLeft = '16px';
     priceDiv.style.whiteSpace = 'nowrap';
     priceDiv.textContent = `${auction.buyout_price || auction.starting_price} P`;
+    rightDiv.appendChild(priceDiv);
     
-    cell.appendChild(priceDiv);
+    // Update Button (if requested)
+    if (options.showUpdate && !auction.closed) {
+        const updateBtn = document.createElement('button');
+        updateBtn.textContent = 'Update';
+        updateBtn.className = 'btn btn-primary btn-xs';
+        updateBtn.style.fontSize = '11px';
+        updateBtn.style.padding = '2px 8px';
+        updateBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (options.onUpdate) options.onUpdate(auction);
+        };
+        rightDiv.appendChild(updateBtn);
+    }
+
+    cell.appendChild(rightDiv);
   
     return cell;
   }

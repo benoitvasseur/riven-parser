@@ -1,3 +1,2 @@
 - Possibility to update an existing auction
-- Try to handle riven name better
-- OAuth 2.0 PKCE Authentication
+- Try to handle riven name better / FIX

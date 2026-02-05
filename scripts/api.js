@@ -334,6 +334,42 @@ async function createAuction(auctionData) {
 }
 
 /**
+ * Met à jour une enchère existante
+ * @param {string} auctionId - ID de l'enchère
+ * @param {Object} updateData - Données à mettre à jour
+ * @returns {Promise<Object>} Résultat de la mise à jour
+ */
+async function updateAuction(auctionId, updateData) {
+  try {
+    const response = await authenticatedRequest(`/auctions/entry/${auctionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+    return { success: true, data: response.payload };
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'enchère:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Ferme (supprime) une enchère
+ * @param {string} auctionId - ID de l'enchère
+ * @returns {Promise<Object>} Résultat de la suppression
+ */
+async function closeAuction(auctionId) {
+  try {
+    const response = await authenticatedRequest(`/auctions/entry/${auctionId}/close`, {
+      method: 'PUT'
+    });
+    return { success: true, data: response.payload };
+  } catch (error) {
+    console.error('Erreur lors de la fermeture de l\'enchère:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Récupère les enchères d'un profil
  * @param {string} slug - ID de l'utilisateur
  * @returns {Promise<Array>} Liste des enchères
@@ -371,5 +407,7 @@ window.WarframeAPI = {
   getRivenAttributes,
   searchAuctions,
   createAuction,
+  updateAuction,
+  closeAuction,
   getProfileAuctions
 };

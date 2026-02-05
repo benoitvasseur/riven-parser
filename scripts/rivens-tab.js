@@ -1,11 +1,21 @@
 // Module for "Rivens" tab
 import { createAuctionCell } from './auction-cell.js';
+import { generateSimilarRivenQueries, similarAttributes } from './search-queries.js';
+
+let knownWeapons = [];
+
+async function loadKnownWeapons() {
+  if (knownWeapons.length > 0) return;
+  const knownWeaponsUnsorted = await WarframeAPI.getRivenItems();
+  knownWeapons = knownWeaponsUnsorted.sort((a, b) => a.item_name.localeCompare(b.item_name));
+}
 
 /**
  * Initializes the Rivens tab content
  */
 export function initRivensTab() {
   console.log('Rivens tab initialized');
+  loadKnownWeapons();
   refreshRivensTab();
 }
 
@@ -54,7 +64,10 @@ export async function refreshRivensTab() {
     auctions.forEach(auction => {
         // We pass empty arrays for original attributes as we are not comparing
         // Pass null for query
-        const cell = createAuctionCell(auction, [], [], null);
+        const cell = createAuctionCell(auction, [], [], null, {
+            showUpdate: true,
+            onUpdate: (a) => showUpdateView(a)
+        });
         
         // Add status indicator if closed or private
         if (auction.closed || auction.private || !auction.visible) {
@@ -89,4 +102,286 @@ export async function refreshRivensTab() {
     console.error('Error refreshing rivens tab:', error);
     container.innerHTML = `<div style="text-align:center; padding: 20px; color: red;">Erreur lors du chargement: ${error.message}</div>`;
   }
+}
+
+/**
+ * Shows the update view for a specific auction
+ */
+async function showUpdateView(auction) {
+    const container = document.getElementById('rivensTab');
+    container.innerHTML = ''; // Clear list
+
+    // 1. Back Button
+    const topBar = document.createElement('div');
+    topBar.style.padding = '10px';
+    topBar.style.display = 'flex';
+    topBar.style.alignItems = 'center';
+    
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn btn-secondary btn-sm';
+    backBtn.textContent = '← Back to list';
+    backBtn.onclick = () => refreshRivensTab();
+    topBar.appendChild(backBtn);
+    
+    container.appendChild(topBar);
+
+    // 2. The Riven (Top)
+    const rivenContainer = document.createElement('div');
+    rivenContainer.style.padding = '0 10px 10px 10px';
+    
+    const cell = createAuctionCell(auction, [], [], null, { showUpdate: false });
+    rivenContainer.appendChild(cell);
+    
+    // Actions (Update Price, Delete)
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.display = 'flex';
+    actionsDiv.style.gap = '10px';
+    actionsDiv.style.marginTop = '10px';
+    actionsDiv.style.justifyContent = 'flex-end';
+
+    const updatePriceBtn = document.createElement('button');
+    updatePriceBtn.className = 'btn btn-primary btn-sm';
+    updatePriceBtn.textContent = 'Update Price';
+    updatePriceBtn.onclick = () => openUpdatePriceModal(auction);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn btn-delete btn-sm';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.style.backgroundColor = '#ef4444';
+    deleteBtn.style.color = 'white';
+    deleteBtn.onclick = () => confirmDelete(auction);
+
+    actionsDiv.appendChild(updatePriceBtn);
+    actionsDiv.appendChild(deleteBtn);
+    
+    rivenContainer.appendChild(actionsDiv);
+    container.appendChild(rivenContainer);
+
+    // 3. Similar Rivens
+    const similarContainer = document.createElement('div');
+    similarContainer.id = 'similarRivensUpdateContainer';
+    similarContainer.style.padding = '10px';
+    similarContainer.style.borderTop = '1px solid #eee';
+    similarContainer.innerHTML = '<div style="text-align:center; padding: 20px;">Loading similar auctions... ⏳</div>';
+    container.appendChild(similarContainer);
+
+    // Perform search
+    await loadKnownWeapons(); // Ensure loaded
+    
+    // Transform auction data to format expected by generateSimilarRivenQueries
+    const searchData = {
+        weaponName: auction.item.weapon_url_name,
+        rolls: auction.item.re_rolls,
+        stats: auction.item.attributes.map(attr => ({
+            type: attr.value < 0 ? 'negative' : 'positive',
+            matchedAttribute: { url_name: attr.url_name }
+        }))
+    };
+
+    findSimilarRivensForUpdate(searchData, similarContainer, auction);
+}
+
+function openUpdatePriceModal(auction) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    
+    const content = document.createElement('div');
+    content.className = 'modal-content';
+    content.style.maxWidth = '300px';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Update Price';
+    content.appendChild(title);
+    
+    const form = document.createElement('form');
+    form.onsubmit = (e) => e.preventDefault();
+    
+    const group = document.createElement('div');
+    group.className = 'form-group';
+    
+    const label = document.createElement('label');
+    label.textContent = 'New Price (Platinum)';
+    group.appendChild(label);
+    
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'form-input';
+    input.value = auction.buyout_price || auction.starting_price;
+    input.min = 1;
+    input.required = true;
+    input.focus();
+    group.appendChild(input);
+    
+    form.appendChild(group);
+    
+    const btnGroup = document.createElement('div');
+    btnGroup.style.display = 'flex';
+    btnGroup.style.gap = '10px';
+    btnGroup.style.marginTop = '20px';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.flex = '1';
+    cancelBtn.onclick = () => overlay.remove();
+    
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'submit';
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.textContent = 'Validate';
+    saveBtn.style.flex = '1';
+    
+    saveBtn.onclick = async () => {
+        const newPrice = parseInt(input.value);
+        if (!newPrice || newPrice <= 0) return;
+        
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        
+        const payload = {
+            starting_price: newPrice,
+            buyout_price: newPrice,
+            minimal_reputation: auction.minimal_reputation || 0,
+            visible: auction.visible,
+            note: auction.note || ""
+        };
+        
+        const result = await WarframeAPI.updateAuction(auction.id, payload);
+        
+        if (result.success) {
+            overlay.remove();
+            refreshRivensTab(); // Go back to list
+        } else {
+            alert('Error updating auction: ' + result.error);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Validate';
+        }
+    };
+    
+    btnGroup.appendChild(cancelBtn);
+    btnGroup.appendChild(saveBtn);
+    form.appendChild(btnGroup);
+    
+    content.appendChild(form);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+}
+
+function confirmDelete(auction) {
+    if (confirm('Are you sure you want to close this auction?')) {
+        WarframeAPI.closeAuction(auction.id).then(result => {
+            if (result.success) {
+                refreshRivensTab();
+            } else {
+                alert('Error closing auction: ' + result.error);
+            }
+        });
+    }
+}
+
+// --- Search Logic (Duplicated/Adapted from new-tab.js) ---
+
+async function findSimilarRivensForUpdate(data, container, originalAuction) {
+  const queries = generateSimilarRivenQueries(data, knownWeapons);
+  
+  if (queries.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding: 20px; color: #666;">No similar rivens found (insufficient data).</div>';
+    return;
+  }
+
+  const allResults = [];
+  let successfulQueriesCount = 0;
+  const BATCH_SIZE = 3;
+
+  try {
+    for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+      if (successfulQueriesCount >= 3) break;
+
+      const batch = queries.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(async (q) => {
+        try {
+          const auctions = await WarframeAPI.searchAuctions(q);
+          return { query: q, auctions };
+        } catch (err) {
+          return { query: q, auctions: [] };
+        }
+      }));
+
+      for (const res of batchResults) {
+        allResults.push(res);
+        if (res.auctions && res.auctions.length > 0) {
+          successfulQueriesCount++;
+        }
+      }
+
+      if (successfulQueriesCount < 3 && (i + BATCH_SIZE) < queries.length) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+
+    renderSimilarRivensForUpdate(allResults, container, originalAuction);
+
+  } catch (err) {
+    console.error("Error fetching similar rivens", err);
+    if (allResults.length > 0) {
+        renderSimilarRivensForUpdate(allResults, container, originalAuction);
+    } else {
+        container.innerHTML = '<div style="text-align:center; padding: 20px; color: red;">Error loading similar rivens.</div>';
+    }
+  }
+}
+
+function renderSimilarRivensForUpdate(results, container, originalAuction) {
+  container.innerHTML = '';
+  
+  const title = document.createElement('h3');
+  title.textContent = 'Similar Rivens on Market';
+  container.appendChild(title);
+
+  // Extract original attributes for highlighting
+  const originalPositiveAttrs = originalAuction.item.attributes
+    .filter(a => a.value > 0)
+    .map(a => a.url_name);
+  const originalNegativeAttrs = originalAuction.item.attributes
+    .filter(a => a.value < 0)
+    .map(a => a.url_name);
+
+  results.forEach(res => {
+      // Skip empty results if we have others
+      if (res.auctions.length === 0 && results.some(r => r.auctions.length > 0)) return;
+
+      const section = document.createElement('div');
+      section.style.marginBottom = '24px';
+      
+      const sectionTitle = document.createElement('h4');
+      sectionTitle.textContent = `${res.query._label} (${res.auctions.length} results)`;
+      sectionTitle.style.color = '#667eea';
+      sectionTitle.style.marginBottom = '8px';
+      section.appendChild(sectionTitle);
+
+      if (res.auctions.length > 0) {
+        const list = document.createElement('div');
+        list.style.display = 'flex';
+        list.style.flexDirection = 'column';
+        list.style.gap = '8px';
+        
+        res.auctions.slice(0, 5).forEach(auction => {
+            // Don't show our own auction in results
+            if (auction.id === originalAuction.id) return;
+            
+            list.appendChild(createAuctionCell(auction, originalPositiveAttrs, originalNegativeAttrs, res.query));
+        });
+        
+        section.appendChild(list);
+      } else {
+        const noRes = document.createElement('div');
+        noRes.textContent = 'No auctions found.';
+        noRes.style.color = '#999';
+        noRes.style.fontStyle = 'italic';
+        section.appendChild(noRes);
+      }
+      
+      container.appendChild(section);
+  });
 }

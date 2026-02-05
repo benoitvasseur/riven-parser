@@ -1,5 +1,5 @@
-- Possibility to update an existing auction
-- Try to handle riven name better / FIX
-- Upgrade the OCR for polarity
-- Upgrade the OCR for rolls
-- Upgrade the OCR for stats 0
+- [ ] Possibility to update an existing auction
+- [ ] Try to handle riven name better / FIX
+- [x] Upgrade the OCR for polarity
+- [x] Upgrade the OCR for rolls
+- [x] Upgrade the OCR for stats 0

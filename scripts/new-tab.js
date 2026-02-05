@@ -2,6 +2,7 @@
 import { createAuctionCell } from './auction-cell.js';
 import { parseRivenData, validateRivenData, generateRivenNames } from './riven-parser.js';
 import { generateSimilarRivenQueries } from './search-queries.js';
+import { preprocessImage } from './image-processor.js';
 
 // Tesseract worker instance
 let tesseractWorker = null;
@@ -383,10 +384,21 @@ async function handleNewRivenImg(file, dataUrl) {
       await initTesseractWorker();
     }
     
+    updateOCRStatus('🔧', 'Preprocessing image...');
+    
+    // Create Image object for preprocessing
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise(resolve => img.onload = resolve);
+    
+    // Preprocess the image
+    const processedDataUrl = preprocessImage(img);
+    console.log('Processed data URL:', processedDataUrl);
+
     updateOCRStatus('🔍', 'Analyzing image...');
     
     // Perform OCR
-    const result = await tesseractWorker.recognize(dataUrl);
+    const result = await tesseractWorker.recognize(processedDataUrl);
     
     console.log('OCR result:', result);
     

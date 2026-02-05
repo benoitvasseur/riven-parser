@@ -312,6 +312,9 @@ export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
   // Extract rolls count
   rivenData.rolls = extractRolls(text);
 
+  // Extract polarity
+  rivenData.polarity = extractPolarity(text);
+
   // Fallback: If mastery or rolls are missing, try to find them based on position (below stats)
   if (rivenData.mastery === null || rivenData.rolls === null) {
     const footerData = extractFooterData(lines);
@@ -554,9 +557,13 @@ function extractMastery(text) {
  */
 function extractRolls(text) {
   // Look for patterns like "Rolled 5 times" or "5 rolls"
+  // Added more robust patterns and common OCR error handling
   const patterns = [
     /Rolled\s*(\d+)\s*times?/i,
-    /(\d+)\s*rolls?/i
+    /(\d+)\s*rolls?/i,
+    /Rolled\s*:\s*(\d+)/i,
+    /Rerolls\s*:\s*(\d+)/i,
+    /Rolled\s*(\d+)/i // Just "Rolled 5"
   ];
   
   for (const pattern of patterns) {
@@ -565,6 +572,49 @@ function extractRolls(text) {
       return parseInt(match[1], 10);
     }
   }
+
+  // Fallback: Scan for lines with "roll" and try to extract number with OCR fixes
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (line.match(/roll/i)) {
+      // Replace common OCR mix-ups for numbers
+      const cleanLine = line.replace(/[oO]/g, '0')
+                          .replace(/[lI|]/g, '1')
+                          .replace(/[sS]/g, '5')
+                          .replace(/[zZ]/g, '2')
+                          .replace(/[g]/g, '9')
+                          .replace(/[b]/g, '6'); // sometimes b is 6
+      
+      const match = cleanLine.match(/(\d+)/);
+      if (match) {
+        // Verify it's not a stat line (usually stats have %)
+        if (!line.includes('%')) {
+           return parseInt(match[1], 10);
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extracts polarity from text if present
+ * @param {string} text 
+ * @returns {string|null} Polarity name or null
+ */
+function extractPolarity(text) {
+  const polarities = ['madurai', 'vazarin', 'naramon', 'zenurik', 'unairu'];
+  const lowerText = text.toLowerCase();
+  
+  for (const pol of polarities) {
+    if (lowerText.includes(pol)) {
+      return pol;
+    }
+  }
+  
+  // Check for common OCR misreads of symbols if they appear as single chars?
+  // Hard to say without examples.
   
   return null;
 }

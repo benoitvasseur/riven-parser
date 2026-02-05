@@ -128,7 +128,14 @@
       <p style="color: #999; font-size: 12px; margin-top: 10px;">Formats acceptés : PNG, JPG, JPEG</p>
     </div>
     
-    <div id="preview" class="preview hidden"></div>
+    <div id="preview" class="preview hidden">
+      <h3>Image Originale</h3>
+    </div>
+    
+    <div id="processedPreview" class="preview hidden">
+      <h3>Image Traitée (pour OCR)</h3>
+      <img id="processedImg" alt="Processed Preview">
+    </div>
     
     <div id="status" class="status hidden"></div>
     
@@ -145,7 +152,9 @@
   <!-- Tesseract.js Local -->
   <script src='libs/tesseract.min.js'></script>
   
-  <script>
+  <script type="module">
+    import { preprocessImage } from './scripts/image-processor.js';
+
     let worker = null;
     
     // Initialize Tesseract worker
@@ -153,7 +162,10 @@
       console.log('Initializing Tesseract worker...');
       updateStatus('Initialisation de Tesseract...');
       
-      worker = await Tesseract.createWorker('eng', 1, {
+      // We need to access Tesseract from the global scope as it is loaded via script tag
+      // But since we are in a module now, we can still access window.Tesseract
+      
+      worker = await window.Tesseract.createWorker('eng', 1, {
         langPath: 'https://tessdata.projectnaptha.com/4.0.0',
         logger: (m) => {
           console.log(m);
@@ -205,12 +217,36 @@
       // Display preview
       const reader = new FileReader();
       reader.onload = async (e) => {
+        const dataUrl = e.target.result;
+        
+        // Original Preview
         const preview = document.getElementById('preview');
-        preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        // Keep the H3
+        const originalH3 = preview.querySelector('h3');
+        preview.innerHTML = '';
+        if (originalH3) preview.appendChild(originalH3);
+        else preview.innerHTML = '<h3>Image Originale</h3>';
+        
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        preview.appendChild(img);
         preview.classList.remove('hidden');
         
-        // Run OCR
-        await runOCR(e.target.result);
+        // Wait for image to load before processing
+        await new Promise(resolve => img.onload = resolve);
+        
+        // Process Image
+        updateStatus('Prétraitement de l\'image...');
+        const processedDataUrl = preprocessImage(img);
+        
+        // Processed Preview
+        const processedPreview = document.getElementById('processedPreview');
+        const processedImg = document.getElementById('processedImg');
+        processedImg.src = processedDataUrl;
+        processedPreview.classList.remove('hidden');
+        
+        // Run OCR on Processed Image
+        await runOCR(processedDataUrl);
       };
       reader.readAsDataURL(file);
     }
@@ -219,7 +255,7 @@
     async function runOCR(imageData) {
       try {
         document.getElementById('results').classList.add('hidden');
-        updateStatus('Analyse de l\'image...');
+        updateStatus('Analyse de l\'image traitée...');
         
         if (!worker) {
           await initWorker();

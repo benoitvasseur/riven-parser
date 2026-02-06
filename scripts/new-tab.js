@@ -900,11 +900,22 @@ function getFormDataFromDOM(formElement) {
     
     if (valInput && attrSelect && valInput.value && attrSelect.value) {
       const value = parseFloat(valInput.value);
+      const urlName = attrSelect.value;
+      
+      let type;
+      if (urlName === 'recoil') {
+        // Recoil: Negative value is Good (Positive)
+        type = value < 0 ? 'positive' : 'negative';
+      } else {
+        // Standard: Negative value is Bad (Negative)
+        type = value < 0 ? 'negative' : 'positive';
+      }
+
       stats.push({
         value: Math.abs(value),
-        type: value < 0 ? 'negative' : 'positive',
+        type: type,
         matchedAttribute: {
-          url_name: attrSelect.value
+          url_name: urlName
         }
       });
     }
@@ -1023,7 +1034,17 @@ function addAttributeRow(container, statData = null) {
   numInput.placeholder = 'Value';
   numInput.step = '0.1';
   if (statData) {
-    const sign = statData.type === 'negative' ? '-' : '';
+    let sign;
+    const isRecoil = (statData.matchedAttribute && statData.matchedAttribute.url_name === 'recoil');
+    
+    if (isRecoil) {
+        // Recoil: Positive type (Good) -> Negative sign (-)
+        sign = statData.type === 'positive' ? '-' : ''; 
+    } else {
+        // Standard: Negative type (Bad) -> Negative sign (-)
+        sign = statData.type === 'negative' ? '-' : '';
+    }
+    
     numInput.value = `${sign}${statData.value}`;
   }
   row.appendChild(numInput);

@@ -51,14 +51,26 @@ export function createAuctionCell(auction, originalPositiveAttrs, originalNegati
         tag.style.borderRadius = '4px';
         
         // Check for match
-        const isNegative = attr.value < 0;
-  
+        // const isRecoil = attr.url_name === 'recoil';
+        // let isPositiveType = false;
+
+        // if (isRecoil) {
+        //     // Recoil: Negative value (< 0) is GOOD (Positive type)
+        //     isPositiveType = attr.value <= 0; 
+        // } else {
+        //     // Standard: Positive value (> 0) is GOOD (Positive type)
+        //     isPositiveType = attr.value > 0;
+        // }
+
         let matchType = 'none';
         
-        // Exact Match
-        if (!isNegative && originalPositiveAttrs.includes(attr.url_name)) {
+        // Match Logic
+        // If it's a "Good" attribute (positive type), check if it's in our desired positives
+        if (originalPositiveAttrs.includes(attr.url_name)) {
           matchType = 'positive';
-        } else if (isNegative && originalNegativeAttrs.includes(attr.url_name)) {
+        } 
+        // If it's a "Bad" attribute (negative type), check if it's in our desired negatives
+        else if (originalNegativeAttrs.includes(attr.url_name)) {
           matchType = 'negative';
         }
         

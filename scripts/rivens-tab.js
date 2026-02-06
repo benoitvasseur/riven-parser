@@ -174,7 +174,7 @@ async function showUpdateView(auction) {
         weaponName: auction.item.weapon_url_name,
         rolls: auction.item.re_rolls,
         stats: auction.item.attributes.map(attr => ({
-            type: attr.value < 0 ? 'negative' : 'positive',
+            type: attr.positive ? 'positive' :  'negative',
             matchedAttribute: { url_name: attr.url_name }
         }))
     };
@@ -341,12 +341,24 @@ function renderSimilarRivensForUpdate(results, container, originalAuction) {
   container.appendChild(title);
 
   // Extract original attributes for highlighting
+  // const originalPositiveAttrs = originalAuction.item.attributes
+  //   .filter(a => a.value > 0)
+  //   .map(a => a.url_name);
+  // const originalNegativeAttrs = originalAuction.item.attributes
+  //   .filter(a => a.value < 0)
+  //   .map(a => a.url_name);
+
+  console.log('auction attributes', originalAuction.item.attributes);
   const originalPositiveAttrs = originalAuction.item.attributes
-    .filter(a => a.value > 0)
-    .map(a => a.url_name);
+    .filter(s => s.positive === true)
+    .map(s => s.url_name);
+
   const originalNegativeAttrs = originalAuction.item.attributes
-    .filter(a => a.value < 0)
-    .map(a => a.url_name);
+    .filter(s => s.positive === false)
+    .map(s => s.url_name);
+
+  console.log('original positive attrs', originalPositiveAttrs);
+  console.log('original negative attrs', originalNegativeAttrs);
 
   results.forEach(res => {
       // Skip empty results if we have others

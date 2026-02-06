@@ -303,6 +303,13 @@ export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
   if (knownAttributes && knownAttributes.length > 0) {
     rivenData.stats.forEach(stat => {
       stat.matchedAttribute = findBestAttributeMatch(stat.name, knownAttributes);
+      
+      // Fix for Recoil: Negative value is GOOD (Positive type), Positive value is BAD (Negative type)
+      // extractStats sets type based on sign (+ -> positive, - -> negative)
+      // So we need to invert it for Recoil
+      if (stat.matchedAttribute && stat.matchedAttribute.url_name === 'recoil') {
+        stat.type = stat.type === 'positive' ? 'negative' : 'positive';
+      }
     });
   }
   
@@ -703,7 +710,17 @@ export function formatRivenData(rivenData) {
   if (rivenData.stats && rivenData.stats.length > 0) {
     output += '\nStats:\n';
     rivenData.stats.forEach(stat => {
-      const sign = stat.type === 'positive' ? '+' : '-';
+      let sign;
+      const isRecoil = (stat.matchedAttribute && stat.matchedAttribute.url_name === 'recoil') || 
+                       (stat.name && stat.name.toLowerCase().includes('recoil'));
+                       
+      if (isRecoil) {
+        // Recoil: Positive type (Good) means Negative value (-)
+        sign = stat.type === 'positive' ? '-' : '+';
+      } else {
+        // Standard: Positive type (Good) means Positive value (+)
+        sign = stat.type === 'positive' ? '+' : '-';
+      }
       output += `  ${sign}${stat.value}% ${stat.name}\n`;
     });
   }

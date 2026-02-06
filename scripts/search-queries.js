@@ -35,8 +35,17 @@ export function generateSimilarRivenQueries(data, knownWeapons) {
     }];
   }
 
-  const positiveStats = data.stats.filter(s => s.type === 'positive' && s.matchedAttribute);
-  const negativeStats = data.stats.filter(s => s.type === 'negative' && s.matchedAttribute);
+  const positiveStats = data.stats.filter(s => {
+    if (!s.matchedAttribute) return false;
+    // Recoil exception: Negative value is GOOD (Positive type)
+    // We trust that type is correctly set upstream (parser/new-tab)
+    return s.type === 'positive';
+  });
+
+  const negativeStats = data.stats.filter(s => {
+    if (!s.matchedAttribute) return false;
+    return s.type === 'negative';
+  });
   
   if (positiveStats.length === 0) {
     return [];

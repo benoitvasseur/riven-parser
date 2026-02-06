@@ -12,6 +12,21 @@ export function createAuctionCell(auction, originalPositiveAttrs, originalNegati
     // Info (Attributes)
     const infoDiv = document.createElement('div');
     infoDiv.style.flex = '1';
+
+    // Weapon Name (if requested)
+    if (options.showWeapon && auction.item && auction.item.weapon_url_name) {
+        const weaponDiv = document.createElement('div');
+        // Format: "rubico_prime" -> "Rubico Prime"
+        const weaponName = auction.item.weapon_url_name
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+            
+        weaponDiv.textContent = weaponName;
+        weaponDiv.style.fontSize = '12px';
+        weaponDiv.style.color = '#6b7280';
+        weaponDiv.style.marginBottom = '2px';
+        infoDiv.appendChild(weaponDiv);
+    }
   
     // Riven Name
     const nameDiv = document.createElement('div');

@@ -818,7 +818,7 @@ function createRivenFormElement(data, isSaleMode = false) {
                 type: 'riven',
                 attributes: currentData.stats.map(s => ({
                     positive: s.type === 'positive',
-                    value: s.type === 'negative' ? -s.value : s.value,
+                    value: s.value,
                     url_name: s.matchedAttribute.url_name
                 })),
                 name: currentData.rivenName,

@@ -66,6 +66,7 @@ export async function refreshRivensTab() {
         // Pass null for query
         const cell = createAuctionCell(auction, [], [], null, {
             showUpdate: true,
+            showWeapon: true,
             onUpdate: (a) => showUpdateView(a)
         });
         
@@ -129,7 +130,7 @@ async function showUpdateView(auction) {
     const rivenContainer = document.createElement('div');
     rivenContainer.style.padding = '0 10px 10px 10px';
     
-    const cell = createAuctionCell(auction, [], [], null, { showUpdate: false });
+    const cell = createAuctionCell(auction, [], [], null, { showUpdate: false, showWeapon: true });
     rivenContainer.appendChild(cell);
     
     // Actions (Update Price, Delete)

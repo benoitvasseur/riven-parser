@@ -17,8 +17,8 @@ export function preprocessImage(imgElement) {
   const data = imageData.data;
   
   // Parameters
-  const threshold = 100; // 0-255, adjust based on Riven mod background
-  const contrast = 50; // 0-100ish
+  const threshold = 120; // 0-255, adjust based on Riven mod background
+  const contrast = 80; // 0-100ish
   
   const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 

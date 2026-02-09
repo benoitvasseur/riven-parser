@@ -816,11 +816,16 @@ function createRivenFormElement(data, isSaleMode = false) {
             private: false,
             item: {
                 type: 'riven',
-                attributes: currentData.stats.map(s => ({
+                attributes: currentData.stats.map(s => {
+                  let value = s.type === 'positive' ? s.value : -s.value;
+                  if (s.matchedAttribute.url_name.includes("damage_vs")) {
+                    value = Math.abs(value);
+                  }
+                  return {
                     positive: s.type === 'positive',
-                    value: s.value,
+                    value: value,
                     url_name: s.matchedAttribute.url_name
-                })),
+                }}),
                 name: currentData.rivenName,
                 mastery_level: currentData.mastery,
                 re_rolls: currentData.rolls,

@@ -1,6 +1,7 @@
 # Riven Reader - Chrome Extension
 
 Chrome extension with a sidepanel to facilitate interaction with the Warframe Market via the public API.
+The extension focus primarily on the Rivens, with an embedded OCR to parse the Riven data from a screenshot, list your existing auctions and easily find similar rivens to help you find the best price for your Riven.
 
 ## 🚀 Installation
 
@@ -28,21 +29,20 @@ riven-parser/
 │ ├── search-queries.js # Search queries JavaScript logic
 │ ├── auction-cell.js # Auction cell JavaScript logic
 │ ├── modules-loader.js # Modules loader
+│ ├── image-processor.js # Image processor JavaScript logic
 │ └── sidepanel.js # Sidepanel JavaScript logic
-└── icons/ # Extension icons (to be added)
+└── icons/ # Extension icons
 ```
 
 ## 🎨 Features
 
+- **Riven Reader**: Extract data from Riven mods (Weapon, Stats, MR, Rolls, Polarity)
+- **Find similar rivens**: Find similar rivens in the Warframe Market, from a new parsed Riven or from an existing auction.
+- **Create new auctions**: Create new auctions in the Warframe Market using the Riven data parsed.
+- **Update existing auctions**: Update existing auctions in the Warframe Market.
 - ​​**Session Management**: Automatic login and refresh tokens
-- **Unique Device ID**: Automatic generation and persistence of a unique ID
-- **Modern Interface**: Elegant design with gradients and animations
-- **User Management**: Display of profile information and logout
 - **Auto-refresh Tokens**: Automatic refresh when the token expires
-- **📷 Image Upload**: Drag and drop or select screenshots from Riven mods
-- **🔍 Automatic OCR**: Text recognition via Tesseract.js with progress tracking
-- **📊 Intelligent Analysis** : Automatic extraction of Riven data (weapon, stats, MR, rolls, polarity)
-- **✅ Validation**: Verification of the consistency of the extracted data
+
 
 ## 📝 Usage
 
@@ -66,18 +66,6 @@ riven-parser/
 The extension uses the Warframe Market public API v1:
 
 - **Base URL**: `https://api.warframe.market/v1/`
-
-### Available API Features
-
-The `api.js` module provides the following functions:
-
-- `signIn()`: Start the OAuth 2.0 flow (opens a browser window)
-- `signOut()`: Log out and delete tokens
-- `isAuthenticated()`: Check the connection status and token validity
-- `getAuthToken()`: Retrieve the token (with auto-refresh if necessary)
-- `refreshAccessToken()`: Manually Refresh the Access Token
-- `getUserInfo()`: Retrieve saved user information
-- `authenticatedRequest(endpoint, options)`: Authenticated API request
 
 ## 🔧 Development
 
@@ -106,25 +94,3 @@ The following data is stored in `chrome.storage.local`:
 - `storage`: Allows saving data locally
 - `host_permissions`: Access to the Warframe Market API
 - `https://api.warframe.market/*` (API)
-
-## 🔍 Riven OCR and Analysis
-
-### How to Use OCR
-
-1. **Capture an Image**: Take a screenshot of your Riven mod in Warframe
-2. **Upload the Image**:
-- Drag and drop the image into the drop zone
-- Or click to select a file
-3. **Automatic Analysis**: Tesseract.js analyzes the image in real time
-4. **Check the Results**
-
-### Extracted Data
-
-The Riven parser automatically extracts:
-
-- **Weapon Name**: Ex: "Tonkor", "Rubico", "Acceltra"
-- **Stats**:
-  - Positive (e.g., +120.5% Critical Chance)
-  - Negative (e.g., -45.2% Fire Rate)
-- **Mastery**
-- **Rolls**"

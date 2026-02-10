@@ -265,6 +265,33 @@ export function cleanOCRText(text) {
     // Skip lines that are too short (likely noise)
     if (line.length < 2) continue;
     
+    // Check if line looks like a valid stat or weapon name
+    const hasNumber = /\d/.test(line);
+    const hasLetter = /[a-zA-Z]/.test(line);
+    const wordCount = line.split(/\s+/).filter(w => w.length > 0).length;
+    
+    // Filter short meaningless lines (e.g., "ps", "PE", "Co", "Lr uy ig 4")
+    // Valid lines should either:
+    // 1. Be a stat line: contain numbers AND letters AND reasonable word count
+    // 2. Be a weapon name: contain letters AND be longer OR have recognizable words
+    if (line.length <= 4) {
+      // Very short lines must look like partial stats (have both numbers and letters)
+      // or be potential abbreviations (MR, etc.)
+      if (wordCount === 1 && hasLetter && !hasNumber) {
+        // Single short word without number (e.g., "ps", "PE", "Co") - likely noise
+        console.log(`Filtering short noise word: "${line}"`);
+        continue;
+      }
+      if (wordCount >= 3 && line.length <= 15) {
+        // Multiple tiny words cramped together (e.g., "Lr uy ig 4") - likely noise
+        const avgWordLength = line.replace(/\s+/g, '').length / wordCount;
+        if (avgWordLength < 2) {
+          console.log(`Filtering fragmented noise: "${line}"`);
+          continue;
+        }
+      }
+    }
+    
     // Skip lines with too many special characters (decorations detected as text)
     const specialCharCount = (line.match(/[^a-zA-Z0-9\s+\-.%]/g) || []).length;
     const specialCharRatio = specialCharCount / line.length;

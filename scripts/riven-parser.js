@@ -523,7 +523,7 @@ function findWeaponCandidates(rawName, knownWeapons) {
 
     const normalizedWeapon = weaponName.toLowerCase().replace(/[^a-z0-9]/g, '');
     
-    // Optimization: check if raw name starts with weapon name
+    // Strategy 1: Exact prefix match
     if (normalizedRaw.startsWith(normalizedWeapon)) {
        candidates.push({
          name: weaponName,
@@ -533,20 +533,43 @@ function findWeaponCandidates(rawName, knownWeapons) {
        continue;
     }
 
-    // Truncate raw string for fuzzy comparison
-    // We try strictly the length of the weapon, and length + 1 to account for potential single insertion
-    // If the raw string continues without space (e.g. "WeaponSuffix"), we want to match "Weapon"
-    
+    // Strategy 2: Fuzzy prefix match (handles first char errors)
     const subExact = normalizedRaw.substring(0, normalizedWeapon.length);
-    const distExact = levenshteinDistance(subExact, normalizedWeapon);
+    let distExact = levenshteinDistance(subExact, normalizedWeapon);
     
-    let dist = distExact;
-
-    // Optional: Check slightly longer substring if it helps (e.g. missing char in OCR but followed by noise)
-    // But generally, comparing equal lengths is safer for prefix matching
+    // Strategy 3: Substring match (skip potential corrupted first chars)
+    // Try matching from position 1 or 2 in case first char(s) are corrupted
+    // Example: "Zrepticor" -> try matching "repticor" with "opticor"
+    let distSubstring = Infinity;
+    if (normalizedRaw.length > normalizedWeapon.length && normalizedWeapon.length > 4) {
+      // Try skipping first char of raw string
+      const sub1 = normalizedRaw.substring(1, normalizedWeapon.length + 1);
+      const dist1 = levenshteinDistance(sub1, normalizedWeapon);
+      distSubstring = Math.min(distSubstring, dist1 + 1); // +1 penalty for skipped char
+      
+      // For longer weapons, also try skipping 2 chars
+      if (normalizedWeapon.length > 6) {
+        const sub2 = normalizedRaw.substring(2, normalizedWeapon.length + 2);
+        const dist2 = levenshteinDistance(sub2, normalizedWeapon);
+        distSubstring = Math.min(distSubstring, dist2 + 2); // +2 penalty for 2 skipped chars
+      }
+    }
+    
+    // Strategy 4: Middle substring match (handles prefix corruption)
+    // Check if middle part of weapon name exists in raw string
+    // Example: "ptico" from "opticor" should match well in "zrepticor"
+    let distMiddle = Infinity;
+    if (normalizedWeapon.length >= 5) {
+      const weaponMiddle = normalizedWeapon.substring(1, normalizedWeapon.length - 1);
+      if (normalizedRaw.includes(weaponMiddle)) {
+        distMiddle = 1; // Found middle part, low penalty
+      }
+    }
+    
+    // Take best distance from all strategies
+    let dist = Math.min(distExact, distSubstring, distMiddle);
     
     // Adjust threshold based on length
-    // Short names must be very accurate
     let threshold;
     if (normalizedWeapon.length <= 3) {
       threshold = 0; // Exact match only for 2-3 char names like "Bo", "Uz"
@@ -576,29 +599,99 @@ function extractStats(text) {
   const stats = [];
   
   // Regex patterns for stats
-  // Examples: "+120.5% Critical Chance", "-45.2% Fire Rate", "+0 4/Damage"
-  // Handles OCR errors like spaces in numbers ("0 4" -> 0.4), missing %, or "/" instead of "%"
-  const statPattern = /([+-])\s*((?:\d+(?:[.,\s]\d+)*))\s*[%/]?\s*([a-zA-Z].+?)(?=\n|$)/gi;
+  // Examples: "+120.5% Critical Chance", "-45.2% Fire Rate", "+0 4/Damage", "107 1% Multishot", "0 4 Damage to Infested"
+  // Handles OCR errors like:
+  // - spaces in numbers ("0 4" -> 0.4, "107 1" -> 107.1)
+  // - missing %, or "/" instead of "%"
+  // - missing +/- sign (treated as positive if value > 1, negative otherwise)
+  const statPattern = /([+-])?\s*((?:\d+(?:[.,\s]\d+)*))\s*[%/]?\s*([a-zA-Z].+?)(?=\n|$)/gi;
   
   let match;
   while ((match = statPattern.exec(text)) !== null) {
+    let sign = match[1]; // Can be undefined if missing
     let rawValue = match[2];
+    let statName = match[3].trim();
+    
+    // Filter 1: Skip if the statName contains a hyphen (likely weapon/riven name like "Visi-satipha")
+    if (statName.includes('-')) {
+      console.log(`Skipping stat with hyphen (likely weapon name): "${statName}"`);
+      continue;
+    }
+    
+    // Filter 2: Skip if statName is too long (likely captured wrong text)
+    if (statName.length > 40) {
+      console.log(`Skipping stat with too long name (${statName.length} chars): "${statName}"`);
+      continue;
+    }
+    
+    // Filter 3: Skip if statName looks like a proper name (multiple capitalized words)
+    // BUT: Allow if it contains stat keywords (e.g., "Melee Damage" is valid even if capitalized)
+    // Pattern: Word starting with capital, space, another word starting with capital
+    // Examples to BLOCK: "Opticor Vandal", "Kuva Kohm", "Zrepticor Visi"
+    // Examples to ALLOW: "Melee Damage", "Attack Speed", "Critical Chance"
+    const properNamePattern = /^[A-Z][a-z]+\s+[A-Z]/;
+    if (properNamePattern.test(statName)) {
+      // Check if it contains stat keywords before blocking
+      const statKeywords = [
+        'damage', 'critical', 'status', 'multishot', 'fire', 'rate', 'reload', 'speed',
+        'magazine', 'ammo', 'punch', 'range', 'heat', 'cold', 'electric', 'toxin',
+        'slash', 'impact', 'puncture', 'infested', 'corpus', 'grineer', 'melee',
+        'attack', 'channeling', 'combo', 'finisher', 'slide', 'recoil', 'zoom',
+        'projectile', 'chance', 'duration', 'efficiency', 'maximum', 'capacity',
+        'through', 'base', 'count'
+      ];
+      const hasStatKeyword = statKeywords.some(keyword => statName.toLowerCase().includes(keyword));
+      
+      if (!hasStatKeyword) {
+        console.log(`Skipping stat that looks like proper name (no stat keywords): "${statName}"`);
+        continue;
+      }
+    }
     
     // Clean up value: replace spaces and commas with dots
     rawValue = rawValue.replace(/[\s,]/g, '.');
     
     let value = parseFloat(rawValue);
-    let type = match[1] === '+' ? 'positive' : 'negative';
-
-    // Rule: 0 counts as negative
-    if (value === 0) {
-      type = 'negative';
+    
+    // Filter 4: Skip very small values without explicit sign (likely noise)
+    // Valid stats without signs are usually > 10 (e.g., "107.1% Multishot")
+    // Small values like "4" or "0.4" should have explicit signs or be part of proper stat line
+    if (!sign && value < 10 && !rawValue.includes('.')) {
+      // Exception: if the statName contains common stat keywords, allow it
+      const statKeywords = ['damage', 'critical', 'status', 'multishot', 'fire rate', 'reload', 'magazine', 'ammo', 'punch', 'range', 'heat', 'cold', 'electric', 'toxin', 'slash', 'impact', 'puncture', 'infested', 'corpus', 'grineer'];
+      const hasStatKeyword = statKeywords.some(keyword => statName.toLowerCase().includes(keyword));
+      
+      if (!hasStatKeyword) {
+        console.log(`Skipping suspicious low value without sign: ${value} "${statName}"`);
+        continue;
+      }
     }
+    
+    // Determine type based on sign or value
+    let type;
+    if (sign === '-') {
+      type = 'negative';
+    } else if (sign === '+') {
+      type = 'positive';
+    } else {
+      // No sign: Heuristic based on value
+      // Small values (< 1) or zero are typically negative stats
+      // Large values (>= 1) are typically positive stats that lost the + sign
+      type = value < 1 ? 'negative' : 'positive';
+    }
+
+    // Apply original value with sign
+    if (type === 'negative' && value > 0) {
+      value = -value; // Make it negative for display purposes? Actually, let's keep it positive but mark type
+    }
+    
+    // Keep value positive, type indicates if it's good or bad
+    value = Math.abs(value);
 
     stats.push({
       type: type,
       value: value,
-      name: match[3].trim()
+      name: statName
     });
   }
   
@@ -808,11 +901,44 @@ export function formatRivenData(rivenData) {
 }
 
 /**
+ * Calculates word-based match score between raw name and attribute
+ * Returns number of matching words (higher is better)
+ * @param {string} rawName 
+ * @param {string} attrEffect 
+ * @returns {number} Number of matching words
+ */
+function calculateWordMatchScore(rawName, attrEffect) {
+  const rawWords = rawName.toLowerCase().split(/[\s/]+/).filter(w => w.length > 0);
+  const attrWords = attrEffect.toLowerCase().split(/[\s/]+/).filter(w => w.length > 0);
+  
+  let matchCount = 0;
+  for (const rawWord of rawWords) {
+    // Check if this word appears in attribute (exact or fuzzy)
+    for (const attrWord of attrWords) {
+      if (rawWord === attrWord) {
+        matchCount += 2; // Exact word match gets higher score
+      } else if (attrWord.includes(rawWord) || rawWord.includes(attrWord)) {
+        matchCount += 1; // Partial word match
+      } else {
+        // Fuzzy match for short edit distance
+        const dist = levenshteinDistance(rawWord, attrWord);
+        if (dist <= 1 && rawWord.length > 3) {
+          matchCount += 1;
+        }
+      }
+    }
+  }
+  
+  return matchCount;
+}
+
+/**
  * Finds the best matching attribute for a given raw stat name
  * Priorities:
  * 1. Exact match (case insensitive)
- * 2. Inclusion (substring) - prefers smallest length difference
- * 3. Levenshtein distance - prefers smallest distance
+ * 2. Word-based matching (prefers attributes where most words match)
+ * 3. Inclusion (substring) - prefers smallest length difference
+ * 4. Levenshtein distance - prefers smallest distance
  * 
  * @param {string} rawName 
  * @param {Array} knownAttributes 
@@ -823,9 +949,8 @@ function findBestAttributeMatch(rawName, knownAttributes) {
   
   const normalizedRaw = rawName.toLowerCase().trim();
   let bestMatch = null;
-  // Score types: 3 = Exact, 2 = Inclusion, 1 = Levenshtein
-  let bestScoreType = 0; 
-  let bestDist = Infinity; // For Levenshtein (lower is better) or Length Diff for Inclusion (lower is better)
+  let bestWordScore = 0;
+  let bestDist = Infinity;
 
   for (const attr of knownAttributes) {
     const attrEffect = attr.effect.toLowerCase();
@@ -835,27 +960,51 @@ function findBestAttributeMatch(rawName, knownAttributes) {
       return attr; // Best possible match, return immediately
     }
     
-    // 2. Inclusion
+    // 2. Word-based matching (NEW - highest priority after exact match)
+    const wordScore = calculateWordMatchScore(normalizedRaw, attrEffect);
+    
+    if (wordScore > bestWordScore) {
+      bestWordScore = wordScore;
+      bestMatch = attr;
+      bestDist = Math.abs(attrEffect.length - normalizedRaw.length);
+    } else if (wordScore === bestWordScore && wordScore > 0) {
+      // Same word score, prefer shorter attribute (more specific)
+      const currentDist = Math.abs(attrEffect.length - normalizedRaw.length);
+      if (currentDist < bestDist) {
+        bestMatch = attr;
+        bestDist = currentDist;
+      }
+    }
+  }
+  
+  // If we found a good word match (at least 2 points), return it
+  if (bestWordScore >= 2) {
+    return bestMatch;
+  }
+  
+  // 3. Fallback: Inclusion-based matching
+  bestMatch = null;
+  bestDist = Infinity;
+  let bestScoreType = 0;
+  
+  for (const attr of knownAttributes) {
+    const attrEffect = attr.effect.toLowerCase();
+    
     const isIncluded = attrEffect.includes(normalizedRaw) || normalizedRaw.includes(attrEffect);
     let isValidInclusion = false;
 
     if (isIncluded) {
-      // Calculate overlap ratio to prevent short generic terms matching long specific terms
-      // e.g. "damage" vs "damage to grifesr" -> should fail inclusion and use Levenshtein to find "damage to grineer"
       const minLen = Math.min(attrEffect.length, normalizedRaw.length);
       const maxLen = Math.max(attrEffect.length, normalizedRaw.length);
       const ratio = minLen / maxLen;
       
-      // Only consider valid inclusion if it covers significant portion (> 60%)
       if (ratio > 0.75) {
         isValidInclusion = true;
         if (bestScoreType < 2) {
-          // Found first inclusion, upgrades previous Levenshtein matches
           bestScoreType = 2;
           bestMatch = attr;
           bestDist = Math.abs(attrEffect.length - normalizedRaw.length);
         } else if (bestScoreType === 2) {
-          // Already have an inclusion, check if this one is better (closer in length)
           const diff = Math.abs(attrEffect.length - normalizedRaw.length);
           if (diff < bestDist) {
             bestMatch = attr;
@@ -869,8 +1018,8 @@ function findBestAttributeMatch(rawName, knownAttributes) {
       continue;
     }
     
-    // 3. Levenshtein Distance
-    if (bestScoreType < 2) { // Only check if we haven't found an inclusion or exact match yet
+    // 4. Levenshtein Distance
+    if (bestScoreType < 2) {
       const dist = levenshteinDistance(normalizedRaw, attrEffect);
       if (dist < bestDist) {
         bestScoreType = 1;

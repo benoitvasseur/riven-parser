@@ -154,11 +154,64 @@ export function getSuffix(text) {
 }
 
 /**
+ * Returns the base value of a stat for a weapon type
+ * @param {string} statUrlName - The url_name of the stat
+ * @param {string} weaponType - The weapon type (rifle, shotgun, pistol, archgun, melee)
+ * @returns {number|null} Base value or null if not found
+ */
+export function getStatBaseValue(statUrlName, weaponType) {
+  // Base values table - extracted from the provided markdown table
+  const baseValues = {
+    'chance_to_gain_extra_combo_count': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 58.77 },
+    'chance_to_gain_combo_count': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 104.85 },
+    'ammo_maximum': { rifle: 49.95, shotgun: 90, pistol: 90, archgun: 99.9, melee: null },
+    'damage_vs_corpus': { rifle: 45, shotgun: 45, pistol: 45, archgun: 45, melee: 45 },
+    'damage_vs_grineer': { rifle: 45, shotgun: 45, pistol: 45, archgun: 45, melee: 45 },
+    'damage_vs_infested': { rifle: 45, shotgun: 45, pistol: 45, archgun: 45, melee: 45 },
+    'cold_damage': { rifle: 90, shotgun: 90, pistol: 90, archgun: 119.7, melee: 90 },
+    'combo_duration': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 8.1 },
+    'critical_chance': { rifle: 149.99, shotgun: 90, pistol: 149.99, archgun: 99.9, melee: 180 },
+    'critical_chance_on_slide_attack': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 120 },
+    'critical_damage': { rifle: 120, shotgun: 90, pistol: 90, archgun: 80.1, melee: 90 },
+    'base_damage': { rifle: 165, shotgun: 164.7, pistol: 219.6, archgun: 99.9, melee: 164.7 },
+    'melee_damage': { rifle: 165, shotgun: 164.7, pistol: 219.6, archgun: 99.9, melee: 164.7 },
+    'damage': { rifle: 165, shotgun: 164.7, pistol: 219.6, archgun: 99.9, melee: 164.7 },
+    'base_damage_/_melee_damage': { rifle: 165, shotgun: 164.7, pistol: 219.6, archgun: 99.9, melee: 164.7 },
+    'electric_damage': { rifle: 90, shotgun: 90, pistol: 90, archgun: 119.7, melee: 90 },
+    'heat_damage': { rifle: 90, shotgun: 90, pistol: 90, archgun: 119.7, melee: 90 },
+    'finisher_damage': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 119.7 },
+    'fire_rate_/_attack_speed': { rifle: 60.03, shotgun: 89.1, pistol: 74.7, archgun: 60.03, melee: 54.9 },
+    'projectile_speed': { rifle: 90, shotgun: 89.1, pistol: 90, archgun: null, melee: null },
+    'channeling_damage': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 24.5 },
+    'impact_damage': { rifle: 119.97, shotgun: 119.97, pistol: 119.97, archgun: 90, melee: 119.7 },
+    'magazine_capacity': { rifle: 50, shotgun: 50, pistol: 50, archgun: 60.3, melee: null },
+    'channeling_efficiency': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 73.44 },
+    'multishot': { rifle: 90, shotgun: 119.7, pistol: 119.7, archgun: 60.3, melee: null },
+    'toxin_damage': { rifle: 90, shotgun: 90, pistol: 90, archgun: 119.7, melee: 90 },
+    'punch_through': { rifle: 2.7, shotgun: 2.7, pistol: 2.7, archgun: 2.7, melee: null },
+    'puncture_damage': { rifle: 119.97, shotgun: 119.97, pistol: 119.97, archgun: 90, melee: 119.7 },
+    'reload_speed': { rifle: 50, shotgun: 49.45, pistol: 50, archgun: 99.9, melee: null },
+    'range': { rifle: null, shotgun: null, pistol: null, archgun: null, melee: 1.94 },
+    'slash_damage': { rifle: 119.97, shotgun: 119.97, pistol: 119.97, archgun: 90, melee: 119.7 },
+    'status_chance': { rifle: 90, shotgun: 90, pistol: 90, archgun: 60.3, melee: 90 },
+    'status_duration': { rifle: 99.99, shotgun: 99, pistol: 99.99, archgun: 99.99, melee: 99 },
+    'recoil': { rifle: 90, shotgun: 90, pistol: 90, archgun: 90, melee: null },
+    'zoom': { rifle: 59.99, shotgun: null, pistol: 80.1, archgun: 59.99, melee: null }
+  };
+
+  const stat = baseValues[statUrlName];
+  if (!stat) return null;
+
+  return stat[weaponType] || null;
+}
+
+/**
  * Generates possible Riven names based on stats
  * @param {Array} stats Array of { value, matchedAttribute: { url_name } }
+ * @param {string} weaponType - The weapon type (rifle, shotgun, pistol, archgun, melee)
  * @returns {Object} { recommended: string, others: string[] }
  */
-export function generateRivenNames(stats) {
+export function generateRivenNames(stats, weaponType = null) {
   // Filter positive attributes with valid url_name
   const positiveStats = stats.filter(s => 
     s.type === 'positive' && 
@@ -170,8 +223,26 @@ export function generateRivenNames(stats) {
     return { recommended: '', others: [] };
   }
 
-  // Sort by value descending for the "recommended" logic
-  const sortedByValue = [...positiveStats].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  // Sort by normalized value (value / base value) descending for the "recommended" logic
+  const sortedByValue = [...positiveStats].sort((a, b) => {
+    let normalizedA = Math.abs(a.value);
+    let normalizedB = Math.abs(b.value);
+
+    // If weaponType is provided, normalize by base value
+    if (weaponType) {
+      const baseA = getStatBaseValue(a.matchedAttribute.url_name, weaponType);
+      const baseB = getStatBaseValue(b.matchedAttribute.url_name, weaponType);
+
+      if (baseA && baseA !== 0) {
+        normalizedA = Math.abs(a.value) / baseA;
+      }
+      if (baseB && baseB !== 0) {
+        normalizedB = Math.abs(b.value) / baseB;
+      }
+    }
+
+    return normalizedB - normalizedA;
+  });
   
   let recommended = '';
   const others = new Set();

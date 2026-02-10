@@ -24,6 +24,25 @@ async function loadKnownAttributes() {
 }
 
 /**
+ * Gets the weapon type (riven_type) from weapon name
+ * @param {string} weaponName - The weapon name
+ * @returns {string|null} Weapon type (rifle, shotgun, pistol, archgun, melee) or null
+ */
+function getWeaponType(weaponName) {
+  if (!weaponName || !knownWeapons || knownWeapons.length === 0) {
+    return null;
+  }
+
+  const weapon = knownWeapons.find(w => 
+    w.item_name === weaponName || 
+    w.url_name === weaponName ||
+    w.item_name.toLowerCase() === weaponName.toLowerCase()
+  );
+
+  return weapon?.riven_type || null;
+}
+
+/**
  * Initializes the New tab content
  */
 export function initNouveauTab() {
@@ -510,7 +529,9 @@ function createRivenFormElement(data, isSaleMode = false) {
       const formData = getFormDataFromDOM(form);
       if (!formData || !formData.stats) return;
 
-      const suggestions = generateRivenNames(formData.stats);
+      // Get weapon type from weapon name
+      const weaponType = getWeaponType(formData.weaponName);
+      const suggestions = generateRivenNames(formData.stats, weaponType);
       
       const dropdown = form.querySelector('#rivenNameDropdown');
       if (dropdown) {
@@ -572,7 +593,8 @@ function createRivenFormElement(data, isSaleMode = false) {
       // Try to get name from parsed data if available, otherwise empty
       let initialName = data.name || '';
       if (!initialName && data.stats) {
-          const names = generateRivenNames(data.stats);
+          const weaponType = getWeaponType(data.weaponName);
+          const names = generateRivenNames(data.stats, weaponType);
           if (names.recommended) initialName = names.recommended;
       }
       nameInput.value = initialName;

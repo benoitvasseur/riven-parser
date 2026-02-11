@@ -262,6 +262,37 @@ I
       rolls: '0',
     }
   },
+  {
+    name: 'Ballistica riven',
+    rawOCR: `A                f       C1
+Id
+y
+x                           7
+.      2                    id
+ERY      hd
+ev I J             -
+pe .r  og
+YL             L B
+                        .
+-
+  h              NO
+Ballistic              oniate
++192 7% Damage
++92 3% Critical Damage
++66 3% Fire Rate
+MR 16                        04
+TP Ear TW`,
+    expected: {
+      weaponName: 'Ballistica',
+      stats: [
+        { value: 192.7, name: 'Damage', type: 'positive', matchedAttribute: 'damage' },
+        { value: 92.3, name: 'Critical Damage', type: 'positive', matchedAttribute: 'critical_damage' },
+        { value: 66.3, name: 'Fire Rate', type: 'positive', matchedAttribute: 'fire_rate_/_attack_speed' },
+      ],
+      mastery: '16',
+      rolls: '4',
+    }
+  },
 ];
 
 // Test runner

@@ -310,11 +310,14 @@ export function cleanOCRText(text) {
     
     // Skip lines with weird spacing patterns (likely OCR artifacts)
     // BUT: Keep lines that look like stat lines (have number + % + stat name)
+    // OR lines that could be weapon names (letters with spaces but no numbers)
     // More than 5 spaces in a row is suspicious
     if (/\s{6,}/.test(line)) {
-      // Exception: if line contains percentage sign and numbers, it's likely a stat
+      // Exception 1: if line contains percentage sign and numbers, it's likely a stat
       const looksLikeStat = /\d+\s*[%/]\s*[a-zA-Z]/.test(line);
-      if (!looksLikeStat) {
+      // Exception 2: if line has letters but no numbers, could be a weapon name with OCR spacing errors
+      const looksLikeWeaponName = hasLetter && !hasNumber && line.replace(/\s+/g, '').length >= 5;
+      if (!looksLikeStat && !looksLikeWeaponName) {
         continue;
       }
     }

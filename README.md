@@ -3,6 +3,14 @@
 Chrome extension with a sidepanel to facilitate interaction with the Warframe Market via the public API.
 The extension focus primarily on the Rivens, with an embedded OCR to parse the Riven data from a screenshot, list your existing auctions and easily find similar rivens to help you find the best price for your Riven.
 
+Use cases:
+- Upload a riven image and let the OCR parse the data
+You can update / complet the riven info and look for similar rivens in the Warframe Market
+Once you have an idea of the price, you can create the auction directly through the extension.
+
+- See all your current auctions in the `Rivens` tab.
+You have the possibility to update the price of each auction and see current similar rivens in Warframe Market.
+
 ## 🚀 Installation
 
 ### Developer Mode
@@ -42,6 +50,18 @@ riven-parser/
 - **Update existing auctions**: Update existing auctions in the Warframe Market.
 - ​​**Session Management**: Automatic login and refresh tokens
 - **Auto-refresh Tokens**: Automatic refresh when the token expires
+
+### Similarity search
+
+The similarity search is based on the following rules:
+- If the Riven is marked as unrolled, we search for unrolled rivens only.
+- If the Riven is rolled, we search for similar rivens with the same attributes.
+
+Attributes color coding:
+- Green: Same positive attribute than your riven
+- Red: Same negative attribute than your riven
+- Yellow: Similar attribute than your riven (Example: Heat damage instead of Cold damage)
+- Grey: Others
 
 
 ## 📝 Usage

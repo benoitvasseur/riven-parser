@@ -1233,7 +1233,7 @@ function renderSimilarRivens(results, originalData) {
 
   // Title
   const title = document.createElement('h3');
-  title.textContent = 'Similar Rivens on Market';
+  title.textContent = 'Similar Rivens on Market for ' + originalData.weaponName;
   similarContainer.appendChild(title);
 
   // Original Riven Attributes (for reference)

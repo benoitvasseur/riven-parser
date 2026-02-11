@@ -201,8 +201,8 @@ WOLF NT`,
         { value: 90.8, name: 'Heat', type: 'positive', matchedAttribute: 'heat_damage' },
         { value: 0.4, name: 'Damage to Infested', type: 'negative', matchedAttribute: 'damage_vs_infested' },
       ],
-      mastery: '9',
-      rolls: null,
+      mastery: 9,
+      rolls: 2,
     }
   },
   {
@@ -233,8 +233,8 @@ TAN`,
         { value: 174.1, name: 'Damage', type: 'positive', matchedAttribute: 'damage' },
         { value: 37.6, name: 'Reload Speed', type: 'negative', matchedAttribute: 'reload_speed' },
       ],
-      mastery: '11',
-      rolls: '0',
+      mastery: 11,
+      rolls: undefined,
     }
   },
   {
@@ -259,8 +259,8 @@ I
         { value: 6.9, name: 'Weapon Recoil', type: 'positive', matchedAttribute: 'recoil' },
         { value: 0.2, name: 'Punch Through', type: 'positive', matchedAttribute: 'punch_through' },
       ],
-      mastery: '11',
-      rolls: '0',
+      mastery: 11,
+      rolls: undefined,
     }
   },
   {
@@ -290,8 +290,8 @@ TP Ear TW`,
         { value: 92.3, name: 'Critical Damage', type: 'positive', matchedAttribute: 'critical_damage' },
         { value: 66.3, name: 'Fire Rate', type: 'positive', matchedAttribute: 'fire_rate_/_attack_speed' },
       ],
-      mastery: '16',
-      rolls: '4',
+      mastery: 16,
+      rolls: 4,
     }
   },
   {
@@ -324,7 +324,7 @@ EE EEE`,
         { value: 39.1, name: 'Reload Speed', type: 'negative', matchedAttribute: 'reload_speed' },
       ],
       mastery: undefined,
-      rolls: '1',
+      rolls: 1,
     }
   },
   {
@@ -387,6 +387,26 @@ testCases.forEach((testCase, index) => {
         console.log(`✅ Weapon name: ${result.weaponName || 'null'}`);
       } else {
         console.log(`❌ Weapon name: expected "${testCase.expected.weaponName}", got "${result.weaponName}"`);
+        testPassed = false;
+      }
+    }
+    
+    // Check mastery
+    if (testCase.expected.mastery !== undefined) {
+      if (result.mastery === testCase.expected.mastery) {
+        console.log(`✅ Mastery: ${result.mastery || 'null'}`);
+      } else {
+        console.log(`❌ Mastery: expected "${testCase.expected.mastery}", got "${result.mastery}"`);
+        testPassed = false;
+      }
+    }
+    
+    // Check rolls
+    if (testCase.expected.rolls !== undefined) {
+      if (result.rolls === testCase.expected.rolls) {
+        console.log(`✅ Rolls: ${result.rolls || 'null'}`);
+      } else {
+        console.log(`❌ Rolls: expected "${testCase.expected.rolls}", got "${result.rolls}"`);
         testPassed = false;
       }
     }

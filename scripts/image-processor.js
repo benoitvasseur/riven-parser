@@ -317,7 +317,11 @@ export function cleanOCRText(text) {
       const looksLikeStat = /\d+\s*[%/]\s*[a-zA-Z]/.test(line);
       // Exception 2: if line has letters but no numbers, could be a weapon name with OCR spacing errors
       const looksLikeWeaponName = hasLetter && !hasNumber && line.replace(/\s+/g, '').length >= 5;
-      if (!looksLikeStat && !looksLikeWeaponName) {
+      // Exception 3: if line contains "MR" (Mastery Rank indicator)
+      const containsMR = /MR/i.test(line);
+      // Exception 4: if line has 2 numbers separated by spaces (MR and Rolls pattern)
+      const hasFooterPattern = /\d+\s+\d+/.test(line);
+      if (!looksLikeStat && !looksLikeWeaponName && !containsMR && !hasFooterPattern) {
         continue;
       }
     }

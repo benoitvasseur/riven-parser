@@ -828,6 +828,15 @@ function extractRolls(text) {
     }
   }
   
+  // Fallback 2: Look for MR pattern with rolls (e.g., "MR 16 04" or "MRS O01")
+  // This handles the common pattern where rolls appear next to MR
+  const mrRollsPattern = /MR[A-Z]?\s*\d+\s+([O0]?\d+)/i;
+  const mrRollsMatch = text.match(mrRollsPattern);
+  if (mrRollsMatch) {
+    const rollsStr = mrRollsMatch[1].replace(/O/g, '0');
+    return parseInt(rollsStr, 10);
+  }
+  
   return null;
 }
 
@@ -875,19 +884,58 @@ function extractFooterData(lines) {
   for (let i = startIndex; i < lines.length; i++) {
     const line = lines[i];
     
-    // Look for a line with at least two numbers (e.g. "15 040")
-    // This catches patterns like "(VR 15 040 A" where 15 is MR and 040 is Rolls
+    // Strategy 1: Look for "MR X Y" pattern where X is mastery and Y is rolls
+    // This handles cases like "8 MR 9 02" or "MR 16 04"
+    const mrPattern = /MR\s*(\d+)\s+(\d+)/i;
+    const mrMatch = line.match(mrPattern);
+    if (mrMatch) {
+      const mr = parseInt(mrMatch[1], 10);
+      const rolls = parseInt(mrMatch[2], 10);
+      if (mr <= 18) {
+        return { mastery: mr, rolls: rolls };
+      }
+    }
+    
+    // Strategy 2: Look for "MR X" at start/middle and number at end
+    // This handles cases like "MRS O01" where OCR misread 0 as O
+    const mrStartPattern = /MR[A-Z]?\s*([O0]\d+)/i;
+    const mrStartMatch = line.match(mrStartPattern);
+    if (mrStartMatch) {
+      // Try to extract rolls from the OCR-corrupted number (O01 -> 01)
+      const rollsStr = mrStartMatch[1].replace(/O/g, '0');
+      const rolls = parseInt(rollsStr, 10);
+      // MR not found in this pattern, keep looking
+      return { mastery: null, rolls: rolls };
+    }
+    
+    // Strategy 3: Look for a line with at least two numbers (e.g. "15 040")
+    // This catches patterns like "VR 15 040 A" where 15 is MR and 040 is Rolls
     const numbers = line.match(/\d+/g);
     
     if (numbers && numbers.length >= 2) {
-      // Heuristic: First number is MR, second is Rolls
-      // MR is typically between 8 and 18.
-      const mr = parseInt(numbers[0], 10);
-      const rolls = parseInt(numbers[1], 10);
-      
-      // Basic sanity check for MR to avoid picking up random large numbers
-      if (mr <= 18) {
-        return { mastery: mr, rolls: rolls };
+      // If line contains "MR", find the number after it
+      if (/MR/i.test(line)) {
+        // Find which number comes after "MR"
+        const mrIndex = line.indexOf('MR');
+        const afterMR = line.substring(mrIndex + 2);
+        const afterNumbers = afterMR.match(/\d+/g);
+        if (afterNumbers && afterNumbers.length >= 2) {
+          const mr = parseInt(afterNumbers[0], 10);
+          const rolls = parseInt(afterNumbers[1], 10);
+          if (mr <= 18) {
+            return { mastery: mr, rolls: rolls };
+          }
+        }
+      } else {
+        // Heuristic: First number is MR, second is Rolls
+        // MR is typically between 8 and 18.
+        const mr = parseInt(numbers[0], 10);
+        const rolls = parseInt(numbers[1], 10);
+        
+        // Basic sanity check for MR to avoid picking up random large numbers
+        if (mr <= 18) {
+          return { mastery: mr, rolls: rolls };
+        }
       }
     }
   }

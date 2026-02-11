@@ -377,9 +377,14 @@ export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
       
       // Fix for Recoil: Negative value is GOOD (Positive type), Positive value is BAD (Negative type)
       // extractStats sets type based on sign (+ -> positive, - -> negative)
-      // So we need to invert it for Recoil
+      // So we need to invert it for Recoil ONLY if there was an explicit sign
       if (stat.matchedAttribute && stat.matchedAttribute.url_name === 'recoil') {
-        stat.type = stat.type === 'positive' ? 'negative' : 'positive';
+        // Only invert if the sign was explicit in OCR
+        // Without explicit sign, we assume positive values (>= 1) are reductions (good)
+        if (stat.hasExplicitSign) {
+          stat.type = stat.type === 'positive' ? 'negative' : 'positive';
+        }
+        // else: keep the guessed type (value >= 1 -> positive = good = reduction)
       }
     });
   }
@@ -622,9 +627,9 @@ function extractStats(text) {
         'damage', 'critical', 'status', 'multishot', 'fire', 'rate', 'reload', 'speed',
         'magazine', 'ammo', 'punch', 'range', 'heat', 'cold', 'electric', 'toxin',
         'slash', 'impact', 'puncture', 'infested', 'corpus', 'grineer', 'melee',
-        'attack', 'channeling', 'combo', 'finisher', 'slide', 'recoil', 'zoom',
+        'attack', 'channeling', 'combo', 'finisher', 'slide', 'recoil', 'recoll', 'zoom',
         'projectile', 'chance', 'duration', 'efficiency', 'maximum', 'capacity',
-        'through', 'base', 'count'
+        'through', 'base', 'count', 'weapon'
       ];
       const hasStatKeyword = statKeywords.some(keyword => statName.toLowerCase().includes(keyword));
       
@@ -675,6 +680,8 @@ function extractStats(text) {
     
     // Determine type based on sign or value
     let type;
+    let hasExplicitSign = (sign === '-' || sign === '+');
+    
     if (sign === '-') {
       type = 'negative';
     } else if (sign === '+') {
@@ -697,7 +704,8 @@ function extractStats(text) {
     stats.push({
       type: type,
       value: value,
-      name: statName
+      name: statName,
+      hasExplicitSign: hasExplicitSign
     });
   }
   

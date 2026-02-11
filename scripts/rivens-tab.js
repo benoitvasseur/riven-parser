@@ -52,6 +52,18 @@ export async function refreshRivensTab() {
     header.textContent = `Your auctions (${auctions.length})`;
     container.appendChild(header);
 
+    // Filter input
+    const filterContainer = document.createElement('div');
+    filterContainer.style.padding = '0 10px 10px 10px';
+    
+    const filterInput = document.createElement('input');
+    filterInput.type = 'text';
+    filterInput.placeholder = 'Filter by weapon name...';
+    filterInput.className = 'form-input';
+    filterInput.style.width = '100%';
+    filterContainer.appendChild(filterInput);
+    container.appendChild(filterContainer);
+
     const list = document.createElement('div');
     list.style.display = 'flex';
     list.style.flexDirection = 'column';
@@ -61,40 +73,77 @@ export async function refreshRivensTab() {
     // Sort by most recent update
     auctions.sort((a, b) => new Date(b.updated) - new Date(a.updated));
 
-    auctions.forEach(auction => {
-        // We pass empty arrays for original attributes as we are not comparing
-        // Pass null for query
-        const cell = createAuctionCell(auction, [], [], null, {
-            showUpdate: true,
-            showWeapon: true,
-            onUpdate: (a) => showUpdateView(a)
+    // Function to render auction cells
+    const renderAuctions = (filteredAuctions) => {
+        list.innerHTML = '';
+        
+        if (filteredAuctions.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.style.textAlign = 'center';
+            noResults.style.padding = '20px';
+            noResults.style.color = '#666';
+            noResults.textContent = 'No auctions match your filter.';
+            list.appendChild(noResults);
+            return;
+        }
+        
+        filteredAuctions.forEach(auction => {
+            // We pass empty arrays for original attributes as we are not comparing
+            // Pass null for query
+            const cell = createAuctionCell(auction, [], [], null, {
+                showUpdate: true,
+                showWeapon: true,
+                onUpdate: (a) => showUpdateView(a)
+            });
+            
+            // Add status indicator if closed or private
+            if (auction.closed || auction.private || !auction.visible) {
+                const statusDiv = document.createElement('div');
+                statusDiv.style.fontSize = '12px';
+                statusDiv.style.marginTop = '5px';
+                statusDiv.style.textAlign = 'right';
+                
+                if (auction.closed) {
+                    statusDiv.textContent = '🔴 Closed';
+                    statusDiv.style.color = '#ef4444';
+                } else if (!auction.visible) {
+                    statusDiv.textContent = '👁️ Invisible';
+                    statusDiv.style.color = '#f59e0b';
+                } else if (auction.private) {
+                    statusDiv.textContent = '🔒 Private';
+                    statusDiv.style.color = '#6b7280';
+                }
+                
+                // Append to the infoDiv (first child of cell)
+                if (cell.firstChild) {
+                    cell.firstChild.appendChild(statusDiv);
+                }
+            }
+
+            list.appendChild(cell);
+        });
+    };
+
+    // Initial render
+    renderAuctions(auctions);
+
+    // Filter functionality
+    filterInput.addEventListener('input', (e) => {
+        const filterValue = e.target.value.toLowerCase().trim();
+        
+        if (!filterValue) {
+            renderAuctions(auctions);
+            return;
+        }
+        
+        const filtered = auctions.filter(auction => {
+            const weaponName = auction.item?.weapon_url_name || '';
+            const itemName = auction.item?.name || '';
+            return weaponName.toLowerCase().includes(filterValue) || 
+                   itemName.toLowerCase().includes(filterValue);
         });
         
-        // Add status indicator if closed or private
-        if (auction.closed || auction.private || !auction.visible) {
-            const statusDiv = document.createElement('div');
-            statusDiv.style.fontSize = '12px';
-            statusDiv.style.marginTop = '5px';
-            statusDiv.style.textAlign = 'right';
-            
-            if (auction.closed) {
-                statusDiv.textContent = '🔴 Closed';
-                statusDiv.style.color = '#ef4444';
-            } else if (!auction.visible) {
-                statusDiv.textContent = '👁️ Invisible';
-                statusDiv.style.color = '#f59e0b';
-            } else if (auction.private) {
-                statusDiv.textContent = '🔒 Private';
-                statusDiv.style.color = '#6b7280';
-            }
-            
-            // Append to the infoDiv (first child of cell)
-            if (cell.firstChild) {
-                cell.firstChild.appendChild(statusDiv);
-            }
-        }
-
-        list.appendChild(cell);
+        renderAuctions(filtered);
     });
 
     container.appendChild(list);

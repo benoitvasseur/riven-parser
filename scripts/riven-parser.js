@@ -367,13 +367,40 @@ export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
   // Extract weapon name (usually first line or contains "Riven")
   rivenData.weaponName = extractWeaponName(lines, knownWeapons);
   
+  // Find weapon name position in text to filter out stats before it
+  let weaponNamePosition = -1;
+  if (rivenData.weaponName) {
+    const normalizedWeaponName = rivenData.weaponName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const textLines = text.split('\n');
+    for (let i = 0; i < textLines.length; i++) {
+      const normalizedLine = textLines[i].toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normalizedLine.includes(normalizedWeaponName)) {
+        // Calculate character position up to this line
+        weaponNamePosition = textLines.slice(0, i).join('\n').length;
+        break;
+      }
+    }
+  }
+  
   // Extract stats (look for +/- percentages)
-  rivenData.stats = extractStats(text);
+  rivenData.stats = extractStats(text, weaponNamePosition);
 
   // Match stats to known attributes
   if (knownAttributes && knownAttributes.length > 0) {
     rivenData.stats.forEach(stat => {
       stat.matchedAttribute = findBestAttributeMatch(stat.name, knownAttributes);
+      
+      // Fix for stats where positive_is_negative is true (like Recoil and Reload Speed)
+      // For these stats, we need to determine the correct type based on the attribute
+      if (stat.matchedAttribute && stat.matchedAttribute.positive_is_negative === false) {
+        // For reload speed (and other time-based stats), lower is better
+        // If no explicit sign, values for reload speed should be negative
+        const isTimeStat = stat.matchedAttribute.url_name === 'reload_speed';
+        if (isTimeStat && !stat.hasExplicitSign) {
+          // Reload speed without sign should be negative (debuff)
+          stat.type = 'negative';
+        }
+      }
       
       // Fix for Recoil: Negative value is GOOD (Positive type), Positive value is BAD (Negative type)
       // extractStats sets type based on sign (+ -> positive, - -> negative)
@@ -578,9 +605,10 @@ function findWeaponCandidates(rawName, knownWeapons) {
 /**
  * Extracts stats from text
  * @param {string} text - Raw text
+ * @param {number} weaponNamePosition - Character position of weapon name in text, stats before this are ignored
  * @returns {Array} Array of stat objects
  */
-function extractStats(text) {
+function extractStats(text, weaponNamePosition = -1) {
   const stats = [];
   
   // Regex patterns for stats
@@ -594,6 +622,11 @@ function extractStats(text) {
   
   let match;
   while ((match = statPattern.exec(text)) !== null) {
+    // Filter: Skip stats that appear before the weapon name
+    if (weaponNamePosition >= 0 && match.index < weaponNamePosition) {
+      console.log(`Skipping stat before weapon name at position ${match.index}: "${match[0]}"`);
+      continue;
+    }
     let sign = match[1]; // Can be undefined if missing
     let rawValue = match[2];
     let statName = match[3].trim();

@@ -416,6 +416,21 @@ export function parseRivenData(text, knownWeapons = [], knownAttributes = []) {
     });
   }
   
+  // Fallback rule: Rivens can't have more than 3 positive stats
+  // If we have 4 stats and 3+ are positive, and at least one doesn't have explicit sign,
+  // convert the stat without explicit sign to negative
+  if (rivenData.stats.length === 4) {
+    const positiveStats = rivenData.stats.filter(s => s.type === 'positive');
+    if (positiveStats.length > 3) {
+      // Find the first positive stat without explicit sign
+      const statToConvert = positiveStats.find(s => !s.hasExplicitSign);
+      if (statToConvert) {
+        console.log(`Applying fallback rule: Converting stat to negative (max 3 positives allowed): ${statToConvert.name}`);
+        statToConvert.type = 'negative';
+      }
+    }
+  }
+  
   // Extract mastery requirement
   rivenData.mastery = extractMastery(text);
   

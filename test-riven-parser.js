@@ -59,6 +59,7 @@ const mockKnownWeapons = [
   { item_name: 'Vermisplicer', url_name: 'vermisplicer', riven_type: 'kitgun' },
   { item_name: 'Sporelacer', url_name: 'sporelacer', riven_type: 'kitgun' },
   { item_name: 'Argonak', url_name: 'argonak', riven_type: 'rifle' },
+  { item_name: 'Acceltra', url_name: 'acceltra', riven_type: 'rifle' },
   { item_name: 'Castanas', url_name: 'castanas', riven_type: 'pistol' },
   { item_name: 'Cestra', url_name: 'cestra', riven_type: 'pistol' },
   { item_name: 'Dual Toxocyst', url_name: 'dual_toxocyst', riven_type: 'pistol' },
@@ -235,6 +236,32 @@ TAN`,
       rolls: '0',
     }
   },
+  {
+    name: 'Acceltra riven',
+    rawOCR: `rr -      -
+ro  W       a
+JAN
+.    BN
+oR     .
+2
+-z  7
+oN
+I
+/        .
+ Acceltra Leximag
+6 9% Weapon Recoll
++0 2 Punch Through
+        MR 11`,
+    expected: {
+      weaponName: 'Acceltra',
+      stats: [
+        { value: 6.9, name: 'Weapon Recoil', type: 'positive', matchedAttribute: 'recoil' },
+        { value: 0.2, name: 'Punch Through', type: 'positive', matchedAttribute: 'punch_through' },
+      ],
+      mastery: '11',
+      rolls: '0',
+    }
+  },
 ];
 
 // Test runner
@@ -281,16 +308,37 @@ testCases.forEach((testCase, index) => {
       testPassed = false;
     }
     
-    // Check each stat
-    testCase.expected.stats.forEach((expectedStat, statIndex) => {
-      const actualStat = result.stats[statIndex];
+    // Match stats by attribute instead of by index
+    const matchedExpected = new Set();
+    const matchedActual = new Set();
+    const statMatches = [];
+    
+    // For each actual stat, find the matching expected stat by attribute
+    result.stats.forEach((actualStat, actualIndex) => {
+      let bestMatch = null;
+      let bestMatchIndex = -1;
       
-      if (!actualStat) {
-        console.log(`❌ Stat ${statIndex + 1}: missing`);
-        testPassed = false;
-        return;
+      testCase.expected.stats.forEach((expectedStat, expectedIndex) => {
+        if (matchedExpected.has(expectedIndex)) return; // Already matched
+        
+        // Match by attribute
+        if (expectedStat.matchedAttribute && actualStat.matchedAttribute) {
+          if (actualStat.matchedAttribute.url_name === expectedStat.matchedAttribute) {
+            bestMatch = expectedStat;
+            bestMatchIndex = expectedIndex;
+          }
+        }
+      });
+      
+      if (bestMatch) {
+        matchedExpected.add(bestMatchIndex);
+        matchedActual.add(actualIndex);
+        statMatches.push({ actualStat, actualIndex, expectedStat: bestMatch, expectedIndex: bestMatchIndex });
       }
-      
+    });
+    
+    // Check matched stats
+    statMatches.forEach(({ actualStat, actualIndex, expectedStat, expectedIndex }) => {
       let statErrors = [];
       
       // Check value (with tolerance for floating point)
@@ -303,31 +351,32 @@ testCases.forEach((testCase, index) => {
         statErrors.push(`type: expected "${expectedStat.type}", got "${actualStat.type}"`);
       }
       
-      // Check matched attribute
-      if (expectedStat.matchedAttribute && actualStat.matchedAttribute) {
-        if (actualStat.matchedAttribute.url_name !== expectedStat.matchedAttribute) {
-          statErrors.push(`attribute: expected "${expectedStat.matchedAttribute}", got "${actualStat.matchedAttribute.url_name}"`);
-        }
-      }
-      
       if (statErrors.length === 0) {
-        console.log(`✅ Stat ${statIndex + 1}: ${actualStat.type === 'positive' ? '+' : '-'}${actualStat.value}% ${actualStat.name} (${actualStat.matchedAttribute?.url_name || 'no match'})`);
+        console.log(`✅ Stat (${expectedStat.matchedAttribute}): ${actualStat.type === 'positive' ? '+' : '-'}${actualStat.value}% ${actualStat.name}`);
       } else {
-        console.log(`❌ Stat ${statIndex + 1}: ${statErrors.join(', ')}`);
+        console.log(`❌ Stat (${expectedStat.matchedAttribute}): ${statErrors.join(', ')}`);
         console.log(`   Expected: ${expectedStat.type === 'positive' ? '+' : '-'}${expectedStat.value}% ${expectedStat.name}`);
         console.log(`   Got:      ${actualStat.type === 'positive' ? '+' : '-'}${actualStat.value}% ${actualStat.name}`);
         testPassed = false;
       }
     });
     
-    // Check for extra stats
-    if (result.stats.length > testCase.expected.stats.length) {
-      console.log(`❌ Extra stats detected:`);
-      result.stats.slice(testCase.expected.stats.length).forEach((stat, i) => {
-        console.log(`   ${i + 1}. ${stat.type === 'positive' ? '+' : '-'}${stat.value}% ${stat.name}`);
-      });
-      testPassed = false;
-    }
+    // Check for missing expected stats
+    testCase.expected.stats.forEach((expectedStat, expectedIndex) => {
+      if (!matchedExpected.has(expectedIndex)) {
+        console.log(`❌ Stat (${expectedStat.matchedAttribute}): missing`);
+        console.log(`   Expected: ${expectedStat.type === 'positive' ? '+' : '-'}${expectedStat.value}% ${expectedStat.name}`);
+        testPassed = false;
+      }
+    });
+    
+    // Check for extra actual stats
+    result.stats.forEach((actualStat, actualIndex) => {
+      if (!matchedActual.has(actualIndex)) {
+        console.log(`❌ Extra stat detected: ${actualStat.type === 'positive' ? '+' : '-'}${actualStat.value}% ${actualStat.name} (${actualStat.matchedAttribute?.url_name || 'no match'})`);
+        testPassed = false;
+      }
+    });
     
     if (testPassed) {
       console.log('\n✅ Test passed');

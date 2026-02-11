@@ -309,9 +309,14 @@ export function cleanOCRText(text) {
     }
     
     // Skip lines with weird spacing patterns (likely OCR artifacts)
+    // BUT: Keep lines that look like stat lines (have number + % + stat name)
     // More than 5 spaces in a row is suspicious
     if (/\s{6,}/.test(line)) {
-      continue;
+      // Exception: if line contains percentage sign and numbers, it's likely a stat
+      const looksLikeStat = /\d+\s*[%/]\s*[a-zA-Z]/.test(line);
+      if (!looksLikeStat) {
+        continue;
+      }
     }
     
     cleanedLines.push(line);

@@ -584,13 +584,19 @@ function extractStats(text) {
   // - spaces in numbers ("0 4" -> 0.4, "107 1" -> 107.1)
   // - missing %, or "/" instead of "%"
   // - missing +/- sign (treated as positive if value > 1, negative otherwise)
-  const statPattern = /([+-])?\s*((?:\d+(?:[.,\s]\d+)*))\s*[%/]?\s*([a-zA-Z].+?)(?=\n|$)/gi;
+  // - OCR misreads of signs: "y" or "v" for "-", etc.
+  const statPattern = /([+\-yv])?\s*((?:\d+(?:[.,\s]\d+)*))\s*[%/]?\s*([a-zA-Z].+?)(?=\n|$)/gi;
   
   let match;
   while ((match = statPattern.exec(text)) !== null) {
     let sign = match[1]; // Can be undefined if missing
     let rawValue = match[2];
     let statName = match[3].trim();
+    
+    // Normalize OCR sign errors: "y" or "v" are often misread "-" signs
+    if (sign === 'y' || sign === 'v') {
+      sign = '-';
+    }
     
     // Filter 1: Skip if the statName contains a hyphen (likely weapon/riven name like "Visi-satipha")
     if (statName.includes('-')) {
@@ -628,8 +634,28 @@ function extractStats(text) {
       }
     }
     
-    // Clean up value: replace spaces and commas with dots
-    rawValue = rawValue.replace(/[\s,]/g, '.');
+    // Clean up value: handle OCR spacing errors
+    // Examples: "107 1" -> "107.1", "4 107 1" -> "107.1" (drop leading digit if it creates invalid format)
+    rawValue = rawValue.replace(/,/g, '.'); // Replace commas with dots
+    
+    // Handle space-separated decimals: "107 1" -> "107.1"
+    // But be careful with cases like "4 107 1" where "4" is noise
+    const parts = rawValue.split(/\s+/);
+    if (parts.length === 2) {
+      // Simple case: "107 1" -> "107.1"
+      rawValue = parts[0] + '.' + parts[1];
+    } else if (parts.length === 3) {
+      // Complex case: "4 107 1" -> could be "4.107.1" or "107.1"
+      // Heuristic: if first part is single digit and second part is 2-3 digits, skip first part
+      if (parts[0].length === 1 && parts[1].length >= 2) {
+        rawValue = parts[1] + '.' + parts[2];
+      } else {
+        rawValue = parts.join('.');
+      }
+    } else if (parts.length > 3) {
+      // Very noisy, take last reasonable parts
+      rawValue = parts.slice(-2).join('.');
+    }
     
     let value = parseFloat(rawValue);
     

@@ -36,6 +36,7 @@ const mockKnownWeapons = [
   { item_name: 'Synapse', url_name: 'synapse', riven_type: 'rifle' },
   { item_name: 'Tigris', url_name: 'tigris', riven_type: 'shotgun' },
   { item_name: 'Tonkor', url_name: 'tonkor', riven_type: 'rifle' },
+  { item_name: 'Lanka', url_name: 'lanka', riven_type: 'rifle' },
   { item_name: 'Torid', url_name: 'torid', riven_type: 'rifle' },
   { item_name: 'Vectis', url_name: 'vectis', riven_type: 'rifle' },
   { item_name: 'Veldt', url_name: 'veldt', riven_type: 'rifle' },
@@ -291,6 +292,39 @@ TP Ear TW`,
       ],
       mastery: '16',
       rolls: '4',
+    }
+  },
+  {
+    name: 'Lanka riven',
+    rawOCR: ` a        4 5 3
+cae
+A we
+ 2
+ a       -
+-
+Sr
+     A NIE
+NS SEA
+NY y 3 fae
+Lanka JOxI-
++116 1% Crapgll
++140 1% Critical Chance
++95% Toxin
+39 1% Reload Speed
+MRS         O01
+PN PrN
+Xp NA
+EE EEE`,
+    expected: {
+      weaponName: 'Lanka',
+      stats: [
+        { value: 116.1, name: 'Critical Damage', type: 'positive', matchedAttribute: 'critical_damage' },
+        { value: 140.1, name: 'Critical Chance', type: 'positive', matchedAttribute: 'critical_chance' },
+        { value: 95.0, name: 'Toxin Damage', type: 'positive', matchedAttribute: 'toxin_damage' },
+        { value: 39.1, name: 'Reload Speed', type: 'negative', matchedAttribute: 'reload_speed' },
+      ],
+      mastery: undefined,
+      rolls: '1',
     }
   },
 ];

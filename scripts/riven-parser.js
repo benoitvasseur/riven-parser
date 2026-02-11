@@ -688,12 +688,20 @@ function extractStats(text, weaponNamePosition = -1) {
     }
     
     // Filter 4: Skip if this looks like a rolls number after mastery rank
-    // Pattern: "R16                 020" where 020 should be recognized as rolls, not a stat
-    // Look backwards in the text to see if there's a mastery pattern nearby
+    // Pattern: "R16                 020" or "MR 14           O30" where the number should be recognized as rolls, not a stat
+    // Strategy 1: Check if match appears right after mastery pattern in preceding text
     const textBeforeMatch = text.substring(Math.max(0, match.index - 100), match.index);
-    const masteryPattern = /R\s*\d+\s*$/i; // "R16" or "R 16" at the end of the preceding text
-    if (masteryPattern.test(textBeforeMatch)) {
-      // This number appears right after a mastery pattern - likely the rolls number
+    const masteryPatternBefore = /(^|[^A-Z])M?R\s*\d+\s*$/i; // "R16", "R 16", "MR 14", "MR14", etc. at the end of the preceding text
+    
+    // Strategy 2: Check if the current line contains mastery pattern before the match
+    // Extract the current line containing this match
+    const lineStartIndex = text.lastIndexOf('\n', match.index) + 1;
+    const lineEndIndex = text.indexOf('\n', match.index);
+    const currentLine = text.substring(lineStartIndex, lineEndIndex === -1 ? text.length : lineEndIndex);
+    const masteryPatternInLine = /M?R\s*\d+/i; // "R16", "MR 14", etc. anywhere in the line
+    
+    if (masteryPatternBefore.test(textBeforeMatch) || masteryPatternInLine.test(currentLine)) {
+      // This number appears in a line with or right after a mastery pattern - likely the rolls number
       // Check if the statName is very short or doesn't contain stat keywords
       const containsStatKeyword = /damage|critical|status|multishot|fire|rate|reload|speed|magazine|ammo|punch|range|heat|cold|electric|toxin|slash|impact|puncture/i.test(statName);
       if (!containsStatKeyword) {

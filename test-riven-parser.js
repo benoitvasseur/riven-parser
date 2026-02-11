@@ -382,6 +382,38 @@ NS Pr`,
       rolls: 20,
     }
   },
+  {
+    name: 'Sobek riven',
+    rawOCR: `REET Wh SI EE Gk
+Woof               .
+f    PRR
+-
+v
+ot
+he
+ 2
+-     CP  RY g4
+JR A
+co
+  k Ye
+y
+IS-aRItin
++92 8% Heat
++48 2% Magazine Capacity
++174 3% Damage
+m
+MR 14           O30`,
+    expected: {
+      weaponName: undefined,
+      stats: [
+        { value: 92.8, name: 'Heat', type: 'positive', matchedAttribute: 'heat_damage' },
+        { value: 48.2, name: 'Magazine Capacity', type: 'positive', matchedAttribute: 'magazine_capacity' },
+        { value: 174.3, name: 'Damage', type: 'positive', matchedAttribute: 'damage' },
+      ],
+      mastery: 14,
+      rolls: 30,
+    }
+  },
 ];
 
 // Test runner

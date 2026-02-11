@@ -687,6 +687,21 @@ function extractStats(text, weaponNamePosition = -1) {
       }
     }
     
+    // Filter 4: Skip if this looks like a rolls number after mastery rank
+    // Pattern: "R16                 020" where 020 should be recognized as rolls, not a stat
+    // Look backwards in the text to see if there's a mastery pattern nearby
+    const textBeforeMatch = text.substring(Math.max(0, match.index - 100), match.index);
+    const masteryPattern = /R\s*\d+\s*$/i; // "R16" or "R 16" at the end of the preceding text
+    if (masteryPattern.test(textBeforeMatch)) {
+      // This number appears right after a mastery pattern - likely the rolls number
+      // Check if the statName is very short or doesn't contain stat keywords
+      const containsStatKeyword = /damage|critical|status|multishot|fire|rate|reload|speed|magazine|ammo|punch|range|heat|cold|electric|toxin|slash|impact|puncture/i.test(statName);
+      if (!containsStatKeyword) {
+        console.log(`Skipping potential rolls number after mastery pattern: "${rawValue}" (${statName})`);
+        continue;
+      }
+    }
+    
     // Clean up value: handle OCR spacing errors
     // Examples: "107 1" -> "107.1", "4 107 1" -> "107.1" (drop leading digit if it creates invalid format)
     rawValue = rawValue.replace(/,/g, '.'); // Replace commas with dots

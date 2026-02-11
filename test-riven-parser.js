@@ -50,6 +50,7 @@ const mockKnownWeapons = [
   { item_name: 'Akbronco', url_name: 'akbronco', riven_type: 'shotgun' },
   { item_name: 'Akjagara', url_name: 'akjagara', riven_type: 'pistol' },
   { item_name: 'Aklato', url_name: 'aklato', riven_type: 'pistol' },
+  { item_name: 'Vasto', url_name: 'vasto', riven_type: 'pistol' },
   { item_name: 'Arca Scisco', url_name: 'arca_scisco', riven_type: 'pistol' },
   { item_name: 'Cycron', url_name: 'cycron', riven_type: 'pistol' },
   { item_name: 'Detron', url_name: 'detron', riven_type: 'shotgun' },
@@ -351,6 +352,34 @@ Rubico Visi-argitis
       ],
       mastery: undefined,
       rolls: undefined,
+    }
+  },
+  {
+    name: 'Vasto riven',
+    rawOCR: `- dw        18
+               -
+t          .
+      -
+-       .
+G  ih
+PR. NO .-   2.
+LA        oN
+at      I
+Ce
+Vasto Vexiata
++126 9% Electricity
++304 8% Damage
+TE
+R16                 020
+NS Pr`,
+    expected: {
+      weaponName: 'Vasto',
+      stats: [
+        { value: 126.9, name: 'Electricity', type: 'positive', matchedAttribute: 'electric_damage' },
+        { value: 304.8, name: 'Damage', type: 'positive', matchedAttribute: 'damage' },
+      ],
+      mastery: 16,
+      rolls: 20,
     }
   },
 ];
